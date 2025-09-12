@@ -1,0 +1,44 @@
+package com.lynn.yuaicodemother.exception;
+
+/**
+ * ClassName: ThrowUtils
+ * Description:
+ *
+ * @Author linz
+ * @Creat 2025/9/12 15:06
+ * @Version 1.00
+ */
+public class ThrowUtils {
+    /**
+     * * 条件成立抛出异常
+     * @param condition 条件
+     * @param runtimeException
+     */
+    public static void throwIf(boolean condition,RuntimeException runtimeException){
+        if(condition){
+            throw runtimeException;
+        }
+    }
+    /**
+     * 条件成立抛出异常
+     * @param condition 条件
+     * @param errorCode 错误码
+     */
+    public static void throwIf(boolean condition, ErrorCode errorCode){
+        if(condition){
+            throw new BusinessException(errorCode);
+        }
+    }
+
+    /**
+     * 条件成立抛出异常
+     * @param condition 条件
+     * @param errorCode 错误码
+     * @param message 错误信息
+     */
+    public static void throwIf(boolean condition, ErrorCode errorCode,String message){
+        if(condition){
+            throw new BusinessException(errorCode,message);
+        }
+    }
+}
