@@ -4,9 +4,12 @@ import com.lynn.yuaicodemother.common.BaseResponse;
 import com.lynn.yuaicodemother.common.ResultUtils;
 import com.lynn.yuaicodemother.exception.BusinessException;
 import com.lynn.yuaicodemother.exception.ErrorCode;
+import com.lynn.yuaicodemother.model.dto.UserLoginRequest;
 import com.lynn.yuaicodemother.model.dto.UserRegisterRequest;
+import com.lynn.yuaicodemother.model.vo.LoginUserVO;
 import com.mybatisflex.core.paginate.Page;
 import jakarta.annotation.Resource;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -45,6 +48,44 @@ public class UserController {
         String checkPassword = userRegisterRequest.getCheckPassword();
         return ResultUtils.success(userService.userRegister(userAccount, userPassword, checkPassword));
     }
+
+    /**
+     * 用户登录
+     * @param userLoginRequest 用户登录请求
+     * @param request 请求对象
+     * @return
+     */
+    @PostMapping("/login")
+    public BaseResponse<LoginUserVO> userLogin(@RequestBody UserLoginRequest userLoginRequest, HttpServletRequest request) {
+        if (userLoginRequest == null) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "参数为空");
+        }
+        String userAccount = userLoginRequest.getUserAccount();
+        String userPassword = userLoginRequest.getUserPassword();
+        LoginUserVO loginUserVO = userService.userLogin(userAccount, userPassword, request);
+        return ResultUtils.success(loginUserVO);
+
+    }
+
+    /*
+    获取当前登录用户信息
+     */
+    @GetMapping("/get/login")
+    public BaseResponse<LoginUserVO> getLoginUser(HttpServletRequest request) {
+        User user = userService.getLoginUser(request);
+        return ResultUtils.success(userService.getLoginUserVO( user));//获取脱敏后的登录用户信息
+    }
+
+    /**
+     * 用户注销
+     * @param request
+     * @return
+     */
+    @PostMapping("/logout")
+    public BaseResponse<Boolean> userLogout(HttpServletRequest request) {
+        return ResultUtils.success(userService.userLogout(request));
+    }
+
 
     /**
      * 保存用户。
