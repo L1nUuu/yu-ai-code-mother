@@ -1,5 +1,6 @@
 package com.lynn.yuaicodemother.controller;
 
+import com.lynn.yuaicodemother.annotation.AuthCheck;
 import com.lynn.yuaicodemother.common.BaseResponse;
 import com.lynn.yuaicodemother.common.ResultUtils;
 import com.lynn.yuaicodemother.exception.BusinessException;
@@ -93,6 +94,7 @@ public class UserController {
      * @param user 用户
      * @return {@code true} 保存成功，{@code false} 保存失败
      */
+    @AuthCheck(mustRole = "admin")
     @PostMapping("save")
     public boolean save(@RequestBody User user) {
         return userService.save(user);
