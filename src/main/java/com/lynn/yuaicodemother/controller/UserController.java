@@ -1,16 +1,22 @@
 package com.lynn.yuaicodemother.controller;
 
+import cn.hutool.core.bean.BeanUtil;
 import com.lynn.yuaicodemother.annotation.AuthCheck;
 import com.lynn.yuaicodemother.common.BaseResponse;
+import com.lynn.yuaicodemother.common.DeleteRequest;
 import com.lynn.yuaicodemother.common.ResultUtils;
+import com.lynn.yuaicodemother.constant.UserConstant;
 import com.lynn.yuaicodemother.exception.BusinessException;
 import com.lynn.yuaicodemother.exception.ErrorCode;
-import com.lynn.yuaicodemother.model.dto.UserLoginRequest;
-import com.lynn.yuaicodemother.model.dto.UserRegisterRequest;
+import com.lynn.yuaicodemother.exception.ThrowUtils;
+import com.lynn.yuaicodemother.model.dto.*;
 import com.lynn.yuaicodemother.model.vo.LoginUserVO;
+import com.lynn.yuaicodemother.model.vo.UserVO;
 import com.mybatisflex.core.paginate.Page;
+import com.mybatisflex.core.query.QueryWrapper;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.util.function.ThrowingFunction;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -25,7 +31,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 /**
- * 用户 控制层。
+ * 用户控制层
  *
  * @author Linz
  */
@@ -87,71 +93,95 @@ public class UserController {
         return ResultUtils.success(userService.userLogout(request));
     }
 
-
     /**
-     * 保存用户。
-     *
-     * @param user 用户
-     * @return {@code true} 保存成功，{@code false} 保存失败
+     * 管理员创建用户
+     * @param userAddRequest 创建用户请求
+     * @return 新创建的用户id
      */
-    @AuthCheck(mustRole = "admin")
-    @PostMapping("save")
-    public boolean save(@RequestBody User user) {
-        return userService.save(user);
+    @PostMapping("/add")
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    public BaseResponse<Long> addUser(@RequestBody UserAddRequest userAddRequest){
+        ThrowUtils.throwIf(userAddRequest == null, ErrorCode.PARAMS_ERROR);
+        User user = new User();
+        BeanUtil.copyProperties(userAddRequest, user);
+        final String DEFAULT_PASSWORD = "12345678";
+        user.setUserPassword(userService.getEncryptPassword(DEFAULT_PASSWORD));//将默认密码加密后设置到用户info中
+        boolean saveResult = userService.save(user);
+        ThrowUtils.throwIf(!saveResult, ErrorCode.OPERATION_ERROR);
+
+        return ResultUtils.success(user.getId());//返回插入后的用户id
     }
 
     /**
-     * 根据主键删除用户。
-     *
-     * @param id 主键
-     * @return {@code true} 删除成功，{@code false} 删除失败
+     * 根据 id 获取用户（仅管理员）
      */
-    @DeleteMapping("remove/{id}")
-    public boolean remove(@PathVariable Long id) {
-        return userService.removeById(id);
+    @GetMapping("/get")
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    public BaseResponse<User> getUserById(Long id){
+        ThrowUtils.throwIf(id <= 0, ErrorCode.PARAMS_ERROR);
+        User user = userService.getById(id);
+        ThrowUtils.throwIf(user == null,ErrorCode.NOT_FOUND_ERROR);
+        return ResultUtils.success(user);
     }
 
     /**
-     * 根据主键更新用户。
-     *
-     * @param user 用户
-     * @return {@code true} 更新成功，{@code false} 更新失败
+     * 根据id获取包装类
      */
-    @PutMapping("update")
-    public boolean update(@RequestBody User user) {
-        return userService.updateById(user);
+    @GetMapping("get/vo")
+    public BaseResponse<UserVO> getUserVOById(Long id){
+        BaseResponse<User> userBaseResponse = getUserById(id);
+        User user = userBaseResponse.getData();
+        return ResultUtils.success(userService.getUserVO(user));
+    }
+
+
+    /**
+     * 删除用户
+     */
+    @PostMapping("/delete")
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    public BaseResponse<Boolean> deleteUser(@RequestBody DeleteRequest deleteRequest){
+        ThrowUtils.throwIf(deleteRequest == null || deleteRequest.getId() <=0,ErrorCode.PARAMS_ERROR);
+        boolean removeResult = userService.removeById(deleteRequest.getId());
+        ThrowUtils.throwIf(!removeResult,ErrorCode.OPERATION_ERROR);
+        return ResultUtils.success(removeResult);
     }
 
     /**
-     * 查询所有用户。
-     *
-     * @return 所有数据
+     * 更新用户
      */
-    @GetMapping("list")
-    public List<User> list() {
-        return userService.list();
+    @PostMapping("/update")
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    public BaseResponse<Boolean> updateUser(@RequestBody UserUpdateRequest userUpdateRequest){
+        if(userUpdateRequest == null || userUpdateRequest.getId()==null){
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        User user = new User();
+        BeanUtil.copyProperties(userUpdateRequest,user);
+        boolean updateResult = userService.updateById(user);
+        ThrowUtils.throwIf(!updateResult, ErrorCode.OPERATION_ERROR);
+        return ResultUtils.success(updateResult);
     }
 
     /**
-     * 根据主键获取用户。
-     *
-     * @param id 用户主键
-     * @return 用户详情
+     * 分页获取用户封装列表（仅管理员）
+     * @param userQueryRequest 查询请求参数
      */
-    @GetMapping("getInfo/{id}")
-    public User getInfo(@PathVariable Long id) {
-        return userService.getById(id);
-    }
+    @PostMapping("/list/page/vo")
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    public BaseResponse<Page<UserVO>> listUserVOByPage(@RequestBody UserQueryRequest userQueryRequest){
+        ThrowUtils.throwIf(userQueryRequest==null,ErrorCode.PARAMS_ERROR);
+        long pageNum = userQueryRequest.getPageNum();
+        long pageSize = userQueryRequest.getPageSize();
 
-    /**
-     * 分页查询用户。
-     *
-     * @param page 分页对象
-     * @return 分页对象
-     */
-    @GetMapping("page")
-    public Page<User> page(Page<User> page) {
-        return userService.page(page);
+        QueryWrapper queryWrapper = userService.getQueryWrapper(userQueryRequest);
+        Page<User> userPage = userService.page(new Page<>(pageNum, pageSize), queryWrapper);
+
+        //数据脱敏
+        Page<UserVO> userVOPage = new Page<>(pageNum,pageSize,userPage.getTotalRow());//只是获得了分页对象，目前userVOPage并没有数据
+        List<UserVO> userVOList = userService.getUserVOList(userPage.getRecords());
+        userVOPage.setRecords(userVOList);//这一步才把VO对象填充进去
+        return ResultUtils.success(userVOPage);
     }
 
 }

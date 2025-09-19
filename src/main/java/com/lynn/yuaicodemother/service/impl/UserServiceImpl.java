@@ -1,6 +1,7 @@
 package com.lynn.yuaicodemother.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.collection.CollectionUtil;
 import cn.hutool.core.lang.Snowflake;
 import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.StrUtil;
@@ -8,8 +9,10 @@ import com.lynn.yuaicodemother.constant.UserConstant;
 import com.lynn.yuaicodemother.exception.BusinessException;
 import com.lynn.yuaicodemother.exception.ErrorCode;
 import com.lynn.yuaicodemother.model.dto.UserLoginRequest;
+import com.lynn.yuaicodemother.model.dto.UserQueryRequest;
 import com.lynn.yuaicodemother.model.enums.UserRoleEnum;
 import com.lynn.yuaicodemother.model.vo.LoginUserVO;
+import com.lynn.yuaicodemother.model.vo.UserVO;
 import com.lynn.yuaicodemother.service.UserService;
 import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.spring.service.impl.ServiceImpl;
@@ -21,6 +24,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
 
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import static com.lynn.yuaicodemother.constant.UserConstant.USER_LOGIN_STATE;
 
@@ -148,6 +154,32 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         return currentUser;
     }
 
+    @Override
+    public UserVO getUserVO(User user) {
+        if (user == null){
+            return null;
+        }
+        UserVO userVO = new UserVO();
+        BeanUtil.copyProperties(user, userVO);
+        return userVO;
+    }
+
+    @Override
+    public List<UserVO> getUserVOList(List<User> userList) {
+        if(CollectionUtil.isEmpty(userList)){
+            return new ArrayList<>();
+        }
+/*
+        List<UserVO> userVOList = new ArrayList<>();
+        for(User user : userList){
+            userVOList.add(this.getUserVO(user));
+        }
+        return userVOList;*/
+        return userList.stream()
+                .map(this::getUserVO)
+                .collect(Collectors.toList());
+    }
+
     //注销登录
     @Override
     public boolean userLogout(HttpServletRequest request) {
@@ -158,6 +190,36 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         // 移除登录态
         request.getSession().removeAttribute(USER_LOGIN_STATE);
         return true;
+    }
+
+    /**
+     * 获取查询条件
+     *
+     * @param userQueryRequest
+     * @return
+     */
+    public QueryWrapper getQueryWrapper(UserQueryRequest userQueryRequest) {
+        //1.先判空
+        if (userQueryRequest == null) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR,"请求参数为空");
+        }
+        //2.获取查询条件
+        Long id = userQueryRequest.getId();
+        String userName = userQueryRequest.getUserName();
+        String userAccount = userQueryRequest.getUserAccount();
+        String userProfile = userQueryRequest.getUserProfile();
+        String userRole = userQueryRequest.getUserRole();
+        String sortField = userQueryRequest.getSortField();
+        String sortOrder = userQueryRequest.getSortOrder();
+        return QueryWrapper.create()
+                .eq("id",id)
+                .eq("userRole",userRole)
+                .like("userAccount",userAccount)
+                .like("userName",userName)
+                .like("userProfile",userProfile)
+                .orderBy(sortField, "ascend".equals(sortOrder));
+
+
     }
 
     /**
