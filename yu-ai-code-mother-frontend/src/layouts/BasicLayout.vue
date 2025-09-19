@@ -1,56 +1,30 @@
 <template>
-  <Layout class="basic-layout">
+  <a-layout class="basic-layout">
     <!-- 顶部导航栏 -->
     <GlobalHeader />
-    
-    <!-- 内容区域 -->
-    <Content class="content">
-      <div class="content-container">
-        <RouterView />
-      </div>
-    </Content>
-    
+    <!-- 主要内容区域 -->
+    <a-layout-content class="main-content">
+      <router-view />
+    </a-layout-content>
     <!-- 底部版权信息 -->
     <GlobalFooter />
-  </Layout>
+  </a-layout>
 </template>
 
 <script setup lang="ts">
-import { RouterView } from 'vue-router'
-import { Layout } from 'ant-design-vue'
 import GlobalHeader from '@/components/GlobalHeader.vue'
 import GlobalFooter from '@/components/GlobalFooter.vue'
-
-const { Content } = Layout
 </script>
 
 <style scoped>
 .basic-layout {
-  min-height: 100vh;
+  background: none;
 }
 
-.content {
-  padding: 80px 24px 80px;
-  background-color: #f0f2f5;
-  min-height: calc(100vh - 144px);
-}
-
-.content-container {
-  max-width: 1440px;
-  margin: 0 auto;
-  background-color: #fff;
-  border-radius: 2px;
+.main-content {
+  max-width: 1200px;
   padding: 24px;
-  min-height: 280px;
-}
-
-@media (max-width: 768px) {
-  .content {
-    padding: 80px 16px 80px;
-  }
-  
-  .content-container {
-    padding: 16px;
-  }
+  background: white;
+  margin: 16px auto 56px;
 }
 </style>
