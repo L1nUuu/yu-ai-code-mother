@@ -1,84 +1,161 @@
 <template>
-  <Header class="header">
-    <div class="header-container">
-      <div class="header-left">
-        <div class="logo">
-          <img src="@/assets/logo.png" alt="Logo" class="logo-img" />
-          <span class="logo-text">编程导航</span>
+  <a-layout-header class="header">
+    <a-row :wrap="false">
+      <!-- 左侧：Logo和标题 -->
+      <a-col flex="200px">
+        <RouterLink to="/">
+          <div class="header-left">
+            <img class="logo" src="@/assets/logo.png" alt="Logo" />
+            <h1 class="site-title">ai应用生成</h1>
+          </div>
+        </RouterLink>
+      </a-col>
+      <!-- 中间：导航菜单 -->
+      <a-col flex="auto">
+        <a-menu
+          v-model:selectedKeys="selectedKeys"
+          mode="horizontal"
+          :items="menuItems"
+          @click="handleMenuClick"
+        />
+      </a-col>
+      <!-- 右侧：用户操作区域 -->
+      <a-col>
+        <div class="user-login-status">
+          <div v-if="loginUserStore.loginUser.id">
+            <a-dropdown>
+              <a-space>
+                <a-avatar
+                  :src="`https://image.baidu.com/search/down?url=${encodeURIComponent(loginUserStore.loginUser.userAvatar)}`"
+                />
+                {{ loginUserStore.loginUser.userName ?? '无名' }}
+              </a-space>
+              <template #overlay>
+                <a-menu @click="doLogout">
+                  <a-menu-item key="logout">
+                    <LogoutOutlined />
+                    退出登录
+                  </a-menu-item>
+                </a-menu>
+              </template>
+            </a-dropdown>
+          </div>
+          <div v-else>
+            <a-button type="primary" href="/user/login">登录</a-button>
+          </div>
         </div>
-      </div>
-      <div class="header-right">
-        <Button type="primary">登录</Button>
-      </div>
-    </div>
-  </Header>
+      </a-col>
+    </a-row>
+  </a-layout-header>
 </template>
 
 <script setup lang="ts">
-import { Layout, Button } from 'ant-design-vue'
+import { computed, h, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { type MenuProps, message } from 'ant-design-vue'
+import { LogoutOutlined } from '@ant-design/icons-vue'
 
-const { Header } = Layout
+import { useLoginUserStore } from '@/stores/loginUser.ts'
+import { userLogout } from '@/api/userController.ts'
 
+const router = useRouter()
+
+const loginUserStore = useLoginUserStore()
+loginUserStore.fetchLoginUser()
+
+// 当前选中菜单
+const selectedKeys = ref<string[]>(['/'])
+// 监听路由变化，更新当前选中菜单
+router.afterEach((to, from, next) => {
+  selectedKeys.value = [to.path]
+})
+
+
+// 菜单配置项
+const originItems = [
+  {
+    key: '/',
+    label: '首页',
+    title: '首页',
+  },
+  {
+    key: '/admin/userManage',
+    label: '用户管理',
+    title: '用户管理',
+  },
+  {
+    key: 'others',
+    label: h('a', { href: 'https://www.codefather.cn', target: '_blank' }, '编程导航'),
+    title: '编程导航',
+  },
+]
+
+// 过滤菜单项
+const filterMenus = (menus = [] as MenuProps['items']) => {
+  return menus?.filter((menu) => {
+    const menuKey = menu?.key as string
+    if (menuKey?.startsWith('/admin')) {
+      const loginUser = loginUserStore.loginUser
+      if (!loginUser || loginUser.userRole !== 'admin') {
+        return false
+      }
+    }
+    return true
+  })
+}
+
+// 展示在菜单的路由数组
+const menuItems = computed<MenuProps['items']>(() => filterMenus(originItems))
+
+// 处理菜单点击
+const handleMenuClick: MenuProps['onClick'] = (e) => {
+  const key = e.key as string
+  selectedKeys.value = [key]
+  // 跳转到对应页面
+  if (key.startsWith('/')) {
+    router.push(key)
+  }
+}
+
+//退出登陆
+const doLogout = async () => {
+  const res = await userLogout()
+  if (res.data.code === 0) {
+    loginUserStore.setLoginUser({
+      userName: '未登录',
+    })
+    message.success('退出登录成功')
+    await router.push('/user/login')
+  } else {
+    message.error('退出登录失败' + res.data.message)
+  }
+}
 </script>
 
 <style scoped>
 .header {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 1000;
-  background-color: #fff;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.09);
-}
-
-.header-container {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  height: 64px;
+  background: #fff;
   padding: 0 24px;
-  max-width: 1440px;
-  margin: 0 auto;
 }
 
 .header-left {
   display: flex;
   align-items: center;
+  gap: 12px;
 }
 
 .logo {
-  display: flex;
-  align-items: center;
-  margin-right: 32px;
+  height: 48px;
+  width: 48px;
 }
 
-.logo-img {
-  width: 32px;
-  height: 32px;
-  margin-right: 8px;
-}
-
-.logo-text {
-  font-size: 20px;
-  font-weight: bold;
+.site-title {
+  margin: 0;
+  font-size: 18px;
   color: #1890ff;
 }
 
-.header-right {
-  display: flex;
-  align-items: center;
-}
-
-@media (max-width: 768px) {
-  .header-container {
-    padding: 0 16px;
-  }
-  .logo {
-    margin-right: 16px;
-  }
-  .logo-text {
-    display: none;
-  }
+.ant-menu-horizontal {
+  border-bottom: none !important;
 }
 </style>

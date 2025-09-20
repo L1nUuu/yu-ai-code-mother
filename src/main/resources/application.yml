@@ -7,6 +7,13 @@ spring:
     url: jdbc:mysql://47.117.37.167:23306/yu_ai_code_mother
     username: root
     password: root
+hikari:
+  maximum-pool-size: 10
+  minimum-idle: 2
+  max-lifetime: 28000_000   # 7 小时 46 分钟，比 8 小时少 1 分钟左右
+  idle-timeout: 600000      # 10 分钟
+  keepalive-time: 300000    # 5 分钟
+  validation-timeout: 5000  # 5 秒
 server:
   port: 8123
   servlet:

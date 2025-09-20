@@ -5,7 +5,7 @@ import { getLoginUser } from '@/api/userController.ts'
 export const useLoginUserStore = defineStore('loginUser', () => {
   // 默认值
   const loginUser = ref<API.LoginUserVO>({
-    userName: '未登录',
+    userName: '未登录', //默认用户名称
   })
 
   // 获取登录用户信息
