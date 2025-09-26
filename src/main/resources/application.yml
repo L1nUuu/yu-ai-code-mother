@@ -21,6 +21,8 @@ spring:
 #    password: root
   profiles:
     active: local
+  lifecycle:
+    timeout-per-shutdown-phase: 120s
 server:
   port: 8123
   servlet:
@@ -39,7 +41,7 @@ springdoc:
     - group: 'default'
       paths-to-match: '/**'
       packages-to-scan: com.lynn.yuaicodemother.controller
-# knife4j???????????????
+# knife4j
 knife4j:
   enable: true
   setting:
