@@ -5,7 +5,7 @@ import com.lynn.yuaicodemother.ai.model.MultiFileCodeResult;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
+@Deprecated
 public class CodeParser {
 
     // 调整正则表达式来更好地匹配代码块
