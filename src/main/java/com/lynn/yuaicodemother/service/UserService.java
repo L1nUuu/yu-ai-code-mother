@@ -2,11 +2,11 @@ package com.lynn.yuaicodemother.service;
 
 import com.lynn.yuaicodemother.model.dto.UserLoginRequest;
 import com.lynn.yuaicodemother.model.dto.UserQueryRequest;
+import com.lynn.yuaicodemother.model.entity.User;
 import com.lynn.yuaicodemother.model.vo.LoginUserVO;
 import com.lynn.yuaicodemother.model.vo.UserVO;
 import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.core.service.IService;
-import com.lynn.yuaicodemother.model.entity.User;
 import jakarta.servlet.http.HttpServletRequest;
 
 import java.util.List;
@@ -63,4 +63,12 @@ public interface UserService extends IService<User> {
 
     //获得查询条件
     QueryWrapper getQueryWrapper(UserQueryRequest userQueryRequest);
+    
+    /**
+     * 是否为管理员
+     *
+     * @param user 用户
+     * @return 是否为管理员
+     */
+    boolean isAdmin(User user);
 }

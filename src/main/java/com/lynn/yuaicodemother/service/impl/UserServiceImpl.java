@@ -10,14 +10,14 @@ import com.lynn.yuaicodemother.exception.BusinessException;
 import com.lynn.yuaicodemother.exception.ErrorCode;
 import com.lynn.yuaicodemother.model.dto.UserLoginRequest;
 import com.lynn.yuaicodemother.model.dto.UserQueryRequest;
+import com.lynn.yuaicodemother.model.entity.User;
 import com.lynn.yuaicodemother.model.enums.UserRoleEnum;
 import com.lynn.yuaicodemother.model.vo.LoginUserVO;
 import com.lynn.yuaicodemother.model.vo.UserVO;
 import com.lynn.yuaicodemother.service.UserService;
+import com.lynn.yuaicodemother.mapper.UserMapper;
 import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.spring.service.impl.ServiceImpl;
-import com.lynn.yuaicodemother.model.entity.User;
-import com.lynn.yuaicodemother.mapper.UserMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -232,5 +232,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         //盐值，混淆密码
         final String SALT = "lynn";
         return DigestUtils.md5DigestAsHex((SALT + userPassword).getBytes(StandardCharsets.UTF_8));
+    }
+    
+    @Override
+    public boolean isAdmin(User user) {
+        return user != null && UserRoleEnum.ADMIN.getValue().equals(user.getUserRole());
     }
 }
