@@ -1,7 +1,6 @@
 package com.lynn.yuaicodemother.service;
 
-import com.lynn.yuaicodemother.model.dto.UserLoginRequest;
-import com.lynn.yuaicodemother.model.dto.UserQueryRequest;
+import com.lynn.yuaicodemother.model.dto.user.UserQueryRequest;
 import com.lynn.yuaicodemother.model.entity.User;
 import com.lynn.yuaicodemother.model.vo.LoginUserVO;
 import com.lynn.yuaicodemother.model.vo.UserVO;

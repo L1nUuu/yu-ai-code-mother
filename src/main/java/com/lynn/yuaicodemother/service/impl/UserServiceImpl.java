@@ -2,14 +2,11 @@ package com.lynn.yuaicodemother.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollectionUtil;
-import cn.hutool.core.lang.Snowflake;
 import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.StrUtil;
-import com.lynn.yuaicodemother.constant.UserConstant;
 import com.lynn.yuaicodemother.exception.BusinessException;
 import com.lynn.yuaicodemother.exception.ErrorCode;
-import com.lynn.yuaicodemother.model.dto.UserLoginRequest;
-import com.lynn.yuaicodemother.model.dto.UserQueryRequest;
+import com.lynn.yuaicodemother.model.dto.user.UserQueryRequest;
 import com.lynn.yuaicodemother.model.entity.User;
 import com.lynn.yuaicodemother.model.enums.UserRoleEnum;
 import com.lynn.yuaicodemother.model.vo.LoginUserVO;
@@ -19,7 +16,6 @@ import com.lynn.yuaicodemother.mapper.UserMapper;
 import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.spring.service.impl.ServiceImpl;
 import jakarta.servlet.http.HttpServletRequest;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
 

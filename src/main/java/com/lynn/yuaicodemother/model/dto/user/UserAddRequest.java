@@ -1,4 +1,4 @@
-package com.lynn.yuaicodemother.model.dto;
+package com.lynn.yuaicodemother.model.dto.user;
 
 import lombok.Data;
 
