@@ -4,11 +4,14 @@ import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.collection.CollectionUtil;
 import cn.hutool.core.util.StrUtil;
+import com.lynn.yuaicodemother.core.AiCodeGeneratorFacade;
 import com.lynn.yuaicodemother.exception.BusinessException;
 import com.lynn.yuaicodemother.exception.ErrorCode;
+import com.lynn.yuaicodemother.exception.ThrowUtils;
 import com.lynn.yuaicodemother.model.dto.app.AppQueryRequest;
 import com.lynn.yuaicodemother.model.entity.App;
 import com.lynn.yuaicodemother.model.entity.User;
+import com.lynn.yuaicodemother.model.enums.CodeGenTypeEnum;
 import com.lynn.yuaicodemother.model.enums.UserRoleEnum;
 import com.lynn.yuaicodemother.model.vo.AppVO;
 import com.lynn.yuaicodemother.model.vo.UserVO;
@@ -20,6 +23,7 @@ import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.spring.service.impl.ServiceImpl;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -36,6 +40,31 @@ import java.util.stream.Collectors;
 public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppService {
     @Resource
     private UserService userService;
+    @Resource
+    private AiCodeGeneratorFacade aiCodeGeneratorFacade;
+
+    @Override
+    public Flux<String> chatToGenCode(Long appId, String message, User loginUser) {
+        // 1.参数校验
+        ThrowUtils.throwIf(appId == null || appId <= 0, ErrorCode.PARAMS_ERROR, "应用ID错误");
+        ThrowUtils.throwIf(StrUtil.isBlank(message), ErrorCode.PARAMS_ERROR, "提示词不能为空");
+        // 2.查询应用信息
+        App app = this.getById(appId);
+        ThrowUtils.throwIf(app == null, ErrorCode.NOT_FOUND_ERROR, "应用不存在");
+        // 3.权限校验，仅本人才能和应用对话
+        if (!loginUser.getId().equals(app.getUserId())){
+            throw new BusinessException(ErrorCode.NO_AUTH_ERROR, "无权访问该应用");
+        }
+        // 4.获取应用的代码生成类型
+        String codeGenType = app.getCodeGenType();
+        // 5.生成代码
+        CodeGenTypeEnum codeGenTypeEnum = CodeGenTypeEnum.getEnumByValue(codeGenType);
+        if(codeGenTypeEnum == null){
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "不支持的代码生成类型");
+        }
+        Flux<String> result = aiCodeGeneratorFacade.generatorAndSaveCodeStream(message, codeGenTypeEnum, appId);
+        return result;
+    }
     
     @Override
     public void validApp(App app, boolean add) {

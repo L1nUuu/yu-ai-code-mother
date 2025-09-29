@@ -2,10 +2,12 @@ package com.lynn.yuaicodemother.service;
 
 import com.lynn.yuaicodemother.model.dto.app.AppQueryRequest;
 import com.lynn.yuaicodemother.model.entity.App;
+import com.lynn.yuaicodemother.model.entity.User;
 import com.lynn.yuaicodemother.model.vo.AppVO;
 import com.mybatisflex.core.paginate.Page;
 import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.core.service.IService;
+import reactor.core.publisher.Flux;
 
 import java.util.List;
 
@@ -15,6 +17,15 @@ import java.util.List;
  * @author Linz
  */
 public interface AppService extends IService<App> {
+
+    /**
+     * 通过对话生成代码
+     * @param appId 应用ID
+     * @param message 对话消息
+     * @param loginUser 登录用户
+     * @return 生成的代码流
+     */
+    Flux<String> chatToGenCode(Long appId, String message, User loginUser);
     
     /**
      * 校验应用数据

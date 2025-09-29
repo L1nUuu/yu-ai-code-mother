@@ -1,6 +1,8 @@
 package com.lynn.yuaicodemother.controller;
 
 import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.util.StrUtil;
+import cn.hutool.json.JSONUtil;
 import com.lynn.yuaicodemother.annotation.AuthCheck;
 import com.lynn.yuaicodemother.common.BaseResponse;
 import com.lynn.yuaicodemother.common.DeleteRequest;
@@ -25,10 +27,16 @@ import com.mybatisflex.core.query.QueryWrapper;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpRequest;
+import org.springframework.http.MediaType;
+import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.web.bind.annotation.*;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 应用 控制层。
@@ -41,15 +49,55 @@ public class AppController {
 
     @Autowired
     private AppService appService;
-    
+
     @Resource
     private UserService userService;
+
+    /**
+     * 生成流式代码
+     *
+     * @param appId   应用ID
+     * @param message 提示词
+     * @param request 请求对象
+     * @return 流式代码
+     */
+    @GetMapping(value = "/chat/gen/code", produces = MediaType.TEXT_EVENT_STREAM_VALUE) //接口响应类型为 SSE
+    public Flux<ServerSentEvent<String>> chatToGenCode(@RequestParam Long appId, @RequestParam String message,
+                                                       HttpServletRequest request) {
+        // 1.参数校验
+        if (appId == null || appId <= 0) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "应用Id错误");
+        }
+        if (StrUtil.isBlank(message)) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "提示词为空");
+        }
+        // 2.获取当前用户信息
+        User loginUser = userService.getLoginUser(request);
+        ThrowUtils.throwIf(loginUser == null, ErrorCode.NOT_LOGIN_ERROR);
+
+        // 3.调用服务生成代码（SSE流式返回）
+        Flux<String> contentFlux = appService.chatToGenCode(appId, message, loginUser);
+        return contentFlux
+                .map(chunk -> {
+                    Map<String, String> wrapper = Map.of("d", chunk); //保持了最小的键值结构，避免了额外的浪费
+                    String jsonData = JSONUtil.toJsonStr(wrapper);
+                    return ServerSentEvent.<String>builder()
+                            .data(jsonData)
+                            .build();
+                }).concatWith(
+                        //发送结束事件
+                        Mono.just(ServerSentEvent.<String>builder()
+                                .event("done")
+                                .data("")
+                                .build())
+                );
+    }
 
     /**
      * 用户创建应用（须填写 initPrompt）
      *
      * @param appAddRequest 应用创建请求
-     * @param request 请求对象
+     * @param request       请求对象
      * @return 应用ID
      */
     @PostMapping("/add")
@@ -65,7 +113,7 @@ public class AppController {
 
         App app = new App();
         BeanUtil.copyProperties(appAddRequest, app);
-        
+
         // 获取当前登录用户
         User loginUser = userService.getLoginUser(request);
         app.setUserId(loginUser.getId());
@@ -74,13 +122,13 @@ public class AppController {
         app.setAppName(initPrompt.substring(0, Math.min(initPrompt.length(), 12)));
         // 暂时设置为多文件生成
         app.setCodeGenType(CodeGenTypeEnum.MULTI_FILE.getValue());
-        
+
         // 校验应用数据
         appService.validApp(app, true);
         //插入数据库
         boolean result = appService.save(app);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
-        
+
         return ResultUtils.success(app.getId());
     }
 
@@ -88,7 +136,7 @@ public class AppController {
      * 用户根据 id 修改自己的应用（目前只支持修改应用名称）
      *
      * @param appUpdateRequest 应用更新请求
-     * @param request 请求对象
+     * @param request          请求对象
      * @return 是否更新成功
      */
     @PostMapping("/update")
@@ -97,21 +145,21 @@ public class AppController {
         if (appUpdateRequest == null || appUpdateRequest.getId() == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
-        
+
         // 获取当前登录用户
         User loginUser = userService.getLoginUser(request);
         Long userId = loginUser.getId();
-        
+
         // 判断应用是否存在
         Long appId = appUpdateRequest.getId();
         App oldApp = appService.getById(appId);
         ThrowUtils.throwIf(oldApp == null, ErrorCode.NOT_FOUND_ERROR);
-        
+
         // 仅本人或管理员可修改
         if (!oldApp.getUserId().equals(userId) && !userService.isAdmin(loginUser)) {
             throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
         }
-        
+
         App app = new App();
         app.setId(appId);
         app.setAppName(appUpdateRequest.getAppName());
@@ -119,10 +167,10 @@ public class AppController {
         app.setEditTime(LocalDateTime.now());
         // 校验应用数据
         appService.validApp(app, false);
-        
+
         boolean result = appService.updateById(app);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
-        
+
         return ResultUtils.success(true);
     }
 
@@ -130,7 +178,7 @@ public class AppController {
      * 用户根据 id 删除自己的应用
      *
      * @param deleteRequest 删除请求
-     * @param request 请求对象
+     * @param request       请求对象
      * @return 是否删除成功
      */
     @PostMapping("/delete")
@@ -139,24 +187,24 @@ public class AppController {
         if (deleteRequest == null || deleteRequest.getId() <= 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
-        
+
         // 获取当前登录用户
         User loginUser = userService.getLoginUser(request);
         Long userId = loginUser.getId();
-        
+
         // 判断应用是否存在
         Long appId = deleteRequest.getId();
         App oldApp = appService.getById(appId);
         ThrowUtils.throwIf(oldApp == null, ErrorCode.NOT_FOUND_ERROR);
-        
+
         // 仅本人或管理员可删除
         if (!oldApp.getUserId().equals(userId) && !userService.isAdmin(loginUser)) {
             throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
         }
-        
+
         boolean result = appService.removeById(appId);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
-        
+
         return ResultUtils.success(true);
     }
 
@@ -164,7 +212,7 @@ public class AppController {
     /**
      * 根据 id 获取应用详情
      *
-     * @param id      应用 id
+     * @param id 应用 id
      * @return 应用详情
      */
     @GetMapping("/get/vo")
@@ -287,18 +335,18 @@ public class AppController {
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public BaseResponse<Page<AppVO>> listAppVOByPageByAdmin(@RequestBody AppQueryRequest appQueryRequest) {
         ThrowUtils.throwIf(appQueryRequest == null, ErrorCode.PARAMS_ERROR);
-        
+
         long pageNum = appQueryRequest.getPageNum();
         long pageSize = appQueryRequest.getPageSize();
-        
+
         QueryWrapper queryWrapper = appService.getQueryWrapper(appQueryRequest);
         Page<App> appPage = appService.page(new Page<>(pageNum, pageSize), queryWrapper);
-        
+
         // 封装 VO
         Page<AppVO> appVOPage = new Page<>(appPage.getPageNumber(), appPage.getPageSize(), appPage.getTotalRow());
         List<AppVO> appVOList = appService.getAppVOList(appPage.getRecords());
         appVOPage.setRecords(appVOList);
-        
+
         return ResultUtils.success(appVOPage);
     }
 
