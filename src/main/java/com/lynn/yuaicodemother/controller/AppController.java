@@ -12,10 +12,7 @@ import com.lynn.yuaicodemother.constant.UserConstant;
 import com.lynn.yuaicodemother.exception.BusinessException;
 import com.lynn.yuaicodemother.exception.ErrorCode;
 import com.lynn.yuaicodemother.exception.ThrowUtils;
-import com.lynn.yuaicodemother.model.dto.app.AppAddRequest;
-import com.lynn.yuaicodemother.model.dto.app.AppAdminUpdateRequest;
-import com.lynn.yuaicodemother.model.dto.app.AppQueryRequest;
-import com.lynn.yuaicodemother.model.dto.app.AppUpdateRequest;
+import com.lynn.yuaicodemother.model.dto.app.*;
 import com.lynn.yuaicodemother.model.entity.App;
 import com.lynn.yuaicodemother.model.entity.User;
 import com.lynn.yuaicodemother.model.enums.CodeGenTypeEnum;
@@ -91,6 +88,23 @@ public class AppController {
                                 .data("")
                                 .build())
                 );
+    }
+
+    @PostMapping("/deploy")
+    public BaseResponse<String> deployApp(@RequestBody AppDeployRequest appDeployRequest, HttpServletRequest request) {
+
+        // 1.参数校验
+        if (appDeployRequest == null || appDeployRequest.getAppId() == null || appDeployRequest.getAppId() <= 0) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        // 2.获取当前登录用户
+        User loginUser = userService.getLoginUser(request);
+        // 3.获取应用ID
+        Long appId = appDeployRequest.getAppId();
+        // 4.调用服务进行部署
+        String deployUrl = appService.deployApp(appId, loginUser);
+        // 5.返回部署url
+        return ResultUtils.success(deployUrl);
     }
 
     /**
