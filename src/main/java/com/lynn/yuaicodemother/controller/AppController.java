@@ -131,6 +131,7 @@ public class AppController {
         // 获取当前登录用户
         User loginUser = userService.getLoginUser(request);
         app.setUserId(loginUser.getId());
+        app.setCover("https://picsum.photos/320/180"); //设置封面为随机图片
 
         // 设置应用名称暂时未initPrompt 前 12位
         app.setAppName(initPrompt.substring(0, Math.min(initPrompt.length(), 12)));
