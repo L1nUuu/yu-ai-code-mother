@@ -26,7 +26,7 @@
             <a-dropdown>
               <a-space>
                 <a-avatar
-                  :src="`https://image.baidu.com/search/down?url=${encodeURIComponent(loginUserStore.loginUser.userAvatar)}`"
+                  :src="`https://image.baidu.com/search/down?url=${encodeURIComponent(loginUserStore.loginUser.userAvatar ?? '')}`"
                 />
                 {{ loginUserStore.loginUser.userName ?? '无名' }}
               </a-space>
@@ -50,13 +50,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed, h, ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { type MenuProps, message } from 'ant-design-vue'
 import { LogoutOutlined } from '@ant-design/icons-vue'
 
-import { useLoginUserStore } from '@/stores/loginUser.ts'
-import { userLogout } from '@/api/userController.ts'
+import { useLoginUserStore } from '@/stores/loginUser'
+import { userLogout } from '@/api/userController'
 
 const router = useRouter()
 
@@ -66,10 +66,9 @@ loginUserStore.fetchLoginUser()
 // 当前选中菜单
 const selectedKeys = ref<string[]>(['/'])
 // 监听路由变化，更新当前选中菜单
-router.afterEach((to, from, next) => {
+router.afterEach((to) => {
   selectedKeys.value = [to.path]
 })
-
 
 // 菜单配置项
 const originItems = [
@@ -84,10 +83,10 @@ const originItems = [
     title: '用户管理',
   },
   {
-    key: 'others',
-    label: h('a', { href: 'https://www.codefather.cn', target: '_blank' }, '编程导航'),
-    title: '编程导航',
-  },
+    key: '/admin/appManage',
+    label: '应用管理',
+    title: '应用管理',
+  }
 ]
 
 // 过滤菜单项
@@ -134,8 +133,13 @@ const doLogout = async () => {
 
 <style scoped>
 .header {
-  background: #fff;
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: saturate(180%) blur(12px);
   padding: 0 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
 }
 
 .header-left {
@@ -151,11 +155,12 @@ const doLogout = async () => {
 
 .site-title {
   margin: 0;
-  font-size: 18px;
+  font-size: 18px; /* 保持原有大小 */
   color: #1890ff;
 }
 
 .ant-menu-horizontal {
   border-bottom: none !important;
+  background: transparent;
 }
 </style>

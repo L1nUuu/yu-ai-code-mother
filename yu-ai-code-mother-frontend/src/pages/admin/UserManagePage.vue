@@ -36,7 +36,9 @@
         {{ dayjs(record.createTime).format('YYYY-MM-DD HH:mm:ss') }}
       </template>
       <template v-else-if="column.key === 'action'">
-        <a-button danger @click="doDelete(record.id)">删除</a-button>
+        <a-popconfirm title="确定删除该用户吗？" @confirm="doDelete(record.id)" ok-text="确定" cancel-text="取消">
+          <a-button danger>删除</a-button>
+        </a-popconfirm>
       </template>
     </template>
   </a-table>
@@ -115,7 +117,8 @@ const pagination = computed(() => {
   }
 })
 // 表格变化处理
-const doTableChange = (page: any) => {
+type TablePageChange = { current: number; pageSize: number }
+const doTableChange = (page: TablePageChange) => {
   searchParams.pageNum = page.current
   searchParams.pageSize = page.pageSize
   fetchData()
