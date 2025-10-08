@@ -36,18 +36,18 @@
           @pressEnter="fetchMyApps"
         />
       </div>
-      <a-row :gutter="16">
+      <a-row :gutter="[16, 24]">
         <a-col v-for="item in myApps" :key="item.id" :span="6">
           <AppCard :app="item" @view-chat="toChat" @view-work="openWork" />
         </a-col>
       </a-row>
-      <a-empty v-if="myApps.length === 0" description="暂无作品" />
+      <EmptyState v-if="myApps.length === 0" description="暂无作品" />
       <div class="section-footer">
-        <a-pagination
+        <PaginationBar
           :current="mySearch.pageNum"
           :pageSize="mySearch.pageSize"
           :total="myTotal"
-          :showTotal="(t: number) => `共 ${t} 个应用`"
+          totalLabel="应用"
           @change="onMyPageChange"
         />
       </div>
@@ -64,18 +64,18 @@
           @pressEnter="fetchGoodApps"
         />
       </div>
-      <a-row :gutter="16">
+      <a-row :gutter="[16, 24]">
         <a-col v-for="item in goodApps" :key="item.id" :span="6">
           <AppCard :app="item" :featured="true" @view-chat="toChat" @view-work="openWork" />
         </a-col>
       </a-row>
-      <a-empty v-if="goodApps.length === 0" description="暂无精选案例" />
+      <EmptyState v-if="goodApps.length === 0" description="暂无精选案例" />
       <div class="section-footer">
-        <a-pagination
+        <PaginationBar
           :current="goodSearch.pageNum"
           :pageSize="goodSearch.pageSize"
           :total="goodTotal"
-          :showTotal="(t: number) => `共 ${t} 个案例`"
+          totalLabel="案例"
           @change="onGoodPageChange"
         />
       </div>
@@ -91,6 +91,9 @@ import AppCard from '@/components/AppCard.vue'
 import { addApp, listMyAppVoByPage, listGoodAppVoByPage } from '@/api/appController'
 import { getDeployUrl, getStaticPreviewUrl } from '@/config/env'
 import { UpOutlined } from '@ant-design/icons-vue'
+
+import EmptyState from '@/components/EmptyState.vue'
+import PaginationBar from '@/components/PaginationBar.vue'
 
 const router = useRouter()
 

@@ -7,7 +7,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import defaultAvatar from '@/assets/aiAvatar.png'
+import { getAvatarSrc } from '@/utils/avatar'
 
 interface Props {
   user?: API.UserVO
@@ -20,12 +20,7 @@ const props = withDefaults(defineProps<Props>(), {
   showName: true,
 })
 
-const avatarSrc = computed(() => {
-  const url = props.user?.userAvatar
-  return url
-    ? `https://image.baidu.com/search/down?url=${encodeURIComponent(url)}`
-    : defaultAvatar
-})
+const avatarSrc = computed(() => getAvatarSrc(props.user?.userAvatar))
 </script>
 
 <style scoped>

@@ -19,10 +19,7 @@
   <a-table :columns="columns" :data-source="data" :pagination="pagination" @change="doTableChange">
     <template #bodyCell="{ column, record }">
       <template v-if="column.dataIndex === 'userAvatar'">
-        <a-image
-          :src="`https://image.baidu.com/search/down?url=${record.userAvatar}`"
-          :width="120"
-        />
+        <a-avatar :src="getAvatarSrc(record.userAvatar)" />
       </template>
       <template v-else-if="column.dataIndex === 'userRole'">
         <div v-if="record.userRole === 'admin'">
@@ -48,6 +45,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { deleteUser, listUserVoByPage } from '@/api/userController.ts'
 import { message } from 'ant-design-vue'
 import dayjs from 'dayjs'
+import { getAvatarSrc } from '@/utils/avatar'
 const columns = [
   {
     title: 'id',

@@ -53,7 +53,7 @@ const formState = reactive<API.UserRegisterRequest>({
  * 提交表单
  * @param values
  */
-const handleSubmit = async (values: any) => {
+const handleSubmit = async (values: API.UserRegisterRequest) => {
   const res = await userRegister(values)
   // 注册成功，跳转到登录页面
   if (res.data.code === 0) {
@@ -70,7 +70,7 @@ const handleSubmit = async (values: any) => {
 /**
  * 自定义密码确认验证
  */
-const validateConfirmPassword = (_: any, value: string) => {
+const validateConfirmPassword = (_: unknown, value: string) => {
   if (value && value !== formState.userPassword) {
     return Promise.reject(new Error('两次输入的密码不一致'))
   }

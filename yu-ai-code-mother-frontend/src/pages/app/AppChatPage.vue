@@ -31,7 +31,7 @@
             <div v-if="message.type === 'user'" class="user-message">
               <div class="message-content">{{ message.content }}</div>
               <div class="message-avatar">
-                <a-avatar :src="`https://image.baidu.com/search/down?url=${encodeURIComponent(loginUserStore.loginUser.userAvatar || aiAvatar)}`" />
+                <a-avatar :src="getAvatarSrc(loginUserStore.loginUser.userAvatar, aiAvatar)" />
               </div>
             </div>
             <div v-else class="ai-message">
@@ -156,6 +156,7 @@ import AppDetailModal from '@/components/AppDetailModal.vue'
 import DeploySuccessModal from '@/components/DeploySuccessModal.vue'
 import aiAvatar from '@/assets/aiAvatar.png'
 import { API_BASE_URL, getStaticPreviewUrl } from '@/config/env'
+import { getAvatarSrc } from '@/utils/avatar'
 
 import {
   CloudUploadOutlined,

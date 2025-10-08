@@ -14,7 +14,7 @@
     </div>
     <div class="app-info">
       <div class="app-info-left">
-        <a-avatar :src="`https://image.baidu.com/search/down?url=${encodeURIComponent(app.user?.userAvatar || '')}`" :size="40" />
+        <a-avatar :src="getAvatarSrc(app.user?.userAvatar)" :size="40" />
       </div>
       <div class="app-info-right">
         <h3 class="app-title">{{ app.appName || '未命名应用' }}</h3>
@@ -50,6 +50,7 @@ const handleViewChat = () => {
 const handleViewWork = () => {
   emit('view-work', props.app)
 }
+import { getAvatarSrc } from '@/utils/avatar'
 </script>
 
 <style scoped>

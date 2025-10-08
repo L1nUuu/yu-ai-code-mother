@@ -25,9 +25,7 @@
           <div v-if="loginUserStore.loginUser.id">
             <a-dropdown>
               <a-space>
-                <a-avatar
-                  :src="`https://image.baidu.com/search/down?url=${encodeURIComponent(loginUserStore.loginUser.userAvatar ?? '')}`"
-                />
+                <a-avatar :src="getAvatarSrc(loginUserStore.loginUser.userAvatar ?? '')" />
                 {{ loginUserStore.loginUser.userName ?? '无名' }}
               </a-space>
               <template #overlay>
@@ -57,6 +55,7 @@ import { LogoutOutlined } from '@ant-design/icons-vue'
 
 import { useLoginUserStore } from '@/stores/loginUser'
 import { userLogout } from '@/api/userController'
+import { getAvatarSrc } from '@/utils/avatar'
 
 const router = useRouter()
 
