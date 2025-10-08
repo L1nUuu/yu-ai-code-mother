@@ -27,6 +27,21 @@
       <div class="chat-section">
         <!-- 消息区域 -->
         <div class="messages-container" ref="messagesContainer">
+          <!-- 加载更多按钮 -->
+          <div v-if="hasMoreHistory" class="load-more-container">
+            <a-button 
+              type="link" 
+              @click="loadMoreHistory" 
+              :loading="loadingHistory"
+              class="load-more-btn"
+            >
+              <template #icon>
+                <UpOutlined />
+              </template>
+              加载更多历史消息
+            </a-button>
+          </div>
+          
           <div v-for="(message, index) in messages" :key="index" class="message-item">
             <div v-if="message.type === 'user'" class="user-message">
               <div class="message-content">{{ message.content }}</div>
@@ -148,6 +163,7 @@ import {
   deployApp as deployAppApi,
   deleteApp as deleteAppApi,
 } from '@/api/appController'
+import { listAppChatHistoryByPage } from '@/api/chatHistoryController'
 import { CodeGenTypeEnum } from '@/utils/codeGenTypes'
 import request from '@/request'
 
@@ -163,6 +179,7 @@ import {
   SendOutlined,
   ExportOutlined,
   InfoCircleOutlined,
+  UpOutlined,
 } from '@ant-design/icons-vue'
 
 const route = useRoute()
@@ -178,13 +195,19 @@ interface Message {
   type: 'user' | 'ai'
   content: string
   loading?: boolean
+  createTime?: string
 }
 
 const messages = ref<Message[]>([])
 const userInput = ref('')
 const isGenerating = ref(false)
 const messagesContainer = ref<HTMLElement>()
-const hasInitialConversation = ref(false) // 标记是否已经进行过初始对话
+
+// 历史消息相关
+const loadingHistory = ref(false)
+const hasMoreHistory = ref(false)
+const lastCreateTime = ref<string>()
+const historyLoaded = ref(false)
 
 // 预览相关
 const previewUrl = ref('')
@@ -212,6 +235,113 @@ const showAppDetail = () => {
   appDetailVisible.value = true
 }
 
+// 加载对话历史
+const loadChatHistory = async (isLoadMore = false) => {
+  if (!appId.value) return
+
+  if (isLoadMore) {
+    loadingHistory.value = true
+  }
+
+  try {
+    const params: any = {
+      appId: appId.value,
+      pageSize: 10,
+    }
+
+    if (isLoadMore && lastCreateTime.value) {
+      params.lastCreateTime = lastCreateTime.value
+    }
+
+    const res = await listAppChatHistoryByPage(params)
+
+    if (res.data.code === 0 && res.data.data) {
+      const historyData: API.ChatHistory[] = res.data.data.records || []
+
+      // 先按创建时间升序排序（旧消息在前，新消息在后）
+      const sortedHistoryData = historyData.slice().sort((a, b) => {
+        const ta = new Date(a.createTime).getTime()
+        const tb = new Date(b.createTime).getTime()
+        return ta - tb
+      })
+
+      // 转换为页面消息格式
+      const historyMessages: Message[] = sortedHistoryData.map((item: API.ChatHistory) => ({
+        type: item.messageType === 'user' ? 'user' : 'ai',
+        content: item.message || '',
+        createTime: item.createTime,
+      }))
+
+      if (isLoadMore) {
+        // 加载更多时，将更早的消息追加到列表前部，保持整体升序
+        messages.value = [...historyMessages, ...messages.value]
+      } else {
+        // 首次加载时直接覆盖
+        messages.value = historyMessages
+      }
+
+      // 更新分页信息：使用当前页最早的时间作为游标，便于继续向更早翻页
+      if (sortedHistoryData.length > 0) {
+        lastCreateTime.value = sortedHistoryData[0].createTime
+        hasMoreHistory.value = sortedHistoryData.length === 10 // 返回满页则可能还有更多
+      } else {
+        hasMoreHistory.value = false
+      }
+
+      historyLoaded.value = true
+    }
+  } catch (error) {
+    console.error('加载对话历史失败：', error)
+    message.error('加载对话历史失败')
+  } finally {
+    if (isLoadMore) {
+      loadingHistory.value = false
+    }
+  }
+}
+
+// 加载更多历史消息
+const loadMoreHistory = async () => {
+  if (!messagesContainer.value || loadingHistory.value) return
+  
+  // 记录加载前的滚动位置和容器高度
+  const scrollTop = messagesContainer.value.scrollTop
+  const scrollHeight = messagesContainer.value.scrollHeight
+  const currentMessagesCount = messages.value.length
+  
+  try {
+    await loadChatHistory(true)
+    
+    // 等待DOM更新后调整滚动位置
+    await nextTick()
+    
+    if (messagesContainer.value) {
+      // 计算新增内容的高度
+      const newScrollHeight = messagesContainer.value.scrollHeight
+      const heightDiff = newScrollHeight - scrollHeight
+      
+      // 如果确实加载了新消息，才调整滚动位置
+      if (messages.value.length > currentMessagesCount && heightDiff > 0) {
+        // 使用平滑滚动调整到新位置
+        const targetScrollTop = scrollTop + heightDiff
+        
+        // 添加一个小的延迟，让用户能感知到新内容的加载
+        setTimeout(() => {
+          if (messagesContainer.value) {
+            messagesContainer.value.scrollTo({
+              top: targetScrollTop,
+              behavior: 'smooth'
+            })
+          }
+        }, 100)
+      }
+    }
+  } catch (error) {
+    console.error('加载更多历史消息失败：', error)
+    message.error('加载更多历史消息失败')
+  }
+}
+
 // 获取应用信息
 const fetchAppInfo = async () => {
   const id = route.params.id as string
@@ -223,17 +353,29 @@ const fetchAppInfo = async () => {
 
   appId.value = id
 
+  // 移除URL中的view参数
+  if (route.query.view) {
+    router.replace({
+      path: route.path,
+      query: { ...route.query, view: undefined }
+    })
+  }
+
   try {
     const res = await getAppVoById({ id })
     if (res.data.code === 0 && res.data.data) {
       appInfo.value = res.data.data
 
-      // 检查是否有view=1参数，如果有则不自动发送初始提示词
-      const isViewMode = route.query.view === '1'
+      // 先加载对话历史
+      await loadChatHistory()
 
-      // 自动发送初始提示词（除非是查看模式或已经进行过初始对话）
-      if (appInfo.value.initPrompt && !isViewMode && !hasInitialConversation.value) {
-        hasInitialConversation.value = true
+      // 检查是否需要展示网站预览
+      if (messages.value.length >= 2) {
+        updatePreview()
+      }
+
+      // 修改自动发送初始消息的逻辑：只有在是自己的app且没有对话历史时才自动发送
+      if (isOwner.value && messages.value.length === 0 && appInfo.value.initPrompt) {
         await sendInitialMessage(appInfo.value.initPrompt)
       }
     } else {
@@ -562,6 +704,26 @@ onUnmounted(() => {
   padding: 16px;
   overflow-y: auto;
   scroll-behavior: smooth;
+}
+
+/* 加载更多按钮样式 */
+.load-more-container {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 16px;
+  padding: 8px 0;
+}
+
+.load-more-btn {
+  color: #1890ff;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.load-more-btn:hover {
+  color: #40a9ff;
 }
 
 .message-item {
