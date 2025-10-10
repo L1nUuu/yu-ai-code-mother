@@ -8,6 +8,8 @@ import com.lynn.yuaicodemother.model.entity.App;
 import com.lynn.yuaicodemother.model.entity.User;
 import com.lynn.yuaicodemother.model.enums.ChatHistoryMessageTypeEnum;
 import com.lynn.yuaicodemother.service.AppService;
+import com.lynn.yuaicodemother.service.UserService;
+import com.lynn.yuaicodemother.util.MarkdownUtils;
 import com.mybatisflex.core.paginate.Page;
 import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.spring.service.impl.ServiceImpl;
@@ -17,9 +19,12 @@ import com.lynn.yuaicodemother.service.ChatHistoryService;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
+
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -37,6 +42,9 @@ public class ChatHistoryServiceImpl extends ServiceImpl<ChatHistoryMapper, ChatH
     @Resource
     @Lazy
     private AppService appService;
+
+    @Resource
+    private UserService userService;
 
     @Override
     public boolean addChatMessage(Long appId, String message, String messageType, Long userId) {
@@ -157,6 +165,60 @@ public class ChatHistoryServiceImpl extends ServiceImpl<ChatHistoryMapper, ChatH
             queryWrapper.orderBy("createTime", false);
         }
         return queryWrapper;
+    }
+
+    @Override
+    public ResponseEntity<org.springframework.core.io.Resource> exportAppChatHistoryMarkdown(Long appId, jakarta.servlet.http.HttpServletRequest request) {
+        // 登录校验
+        User loginUser = userService.getLoginUser(request);
+        ThrowUtils.throwIf(appId == null || appId <= 0, ErrorCode.PARAMS_ERROR, "应用ID不能为空");
+        // 权限校验：仅应用所有者可导出
+        App app = appService.getById(appId);
+        ThrowUtils.throwIf(app == null, ErrorCode.NOT_FOUND_ERROR, "应用不存在");
+        if (!loginUser.getId().equals(app.getUserId())) {
+            ThrowUtils.throwIf(true, ErrorCode.NO_AUTH_ERROR, "无权导出该应用的对话历史");
+        }
+        // 查询全部对话历史（按时间正序）
+        QueryWrapper queryWrapper = com.mybatisflex.core.query.QueryWrapper.create()
+                .eq("appId", appId)
+                .orderBy("createTime", true);
+        List<ChatHistory> chatHistoryList = this.list(queryWrapper);
+        // 构建 Markdown
+        String markdown = MarkdownUtils.buildMarkdownForExport(app, chatHistoryList);
+        byte[] bytes = markdown.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        org.springframework.core.io.Resource resource = new ByteArrayResource(bytes);
+        // 构建文件名
+        String fileName = MarkdownUtils.sanitizeFileName("app-" + appId + "-chat-history-" +
+                java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss").format(java.time.LocalDateTime.now()) + ".md");
+        // 返回文件下载响应
+        return org.springframework.http.ResponseEntity.ok()
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + fileName)
+                .header("Content-Type", "text/markdown; charset=UTF-8")
+                .header("Cache-Control", "no-store")
+                .body(resource);
+    }
+
+    @Override
+    public org.springframework.http.ResponseEntity<org.springframework.core.io.Resource> exportChatHistoryMarkdownAdmin(Long appId) {
+        ThrowUtils.throwIf(appId == null || appId <= 0, ErrorCode.PARAMS_ERROR, "应用ID不能为空");
+        App app = appService.getById(appId);
+        ThrowUtils.throwIf(app == null, ErrorCode.NOT_FOUND_ERROR, "应用不存在");
+        // 查询全部对话历史（按时间正序）
+        com.mybatisflex.core.query.QueryWrapper queryWrapper = com.mybatisflex.core.query.QueryWrapper.create()
+                .eq("appId", appId)
+                .orderBy("createTime", true);
+        List<ChatHistory> chatHistoryList = this.list(queryWrapper);
+        // 构建 Markdown
+        String markdown = MarkdownUtils.buildMarkdownForExport(app, chatHistoryList);
+        byte[] bytes = markdown.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        org.springframework.core.io.Resource resource = new ByteArrayResource(bytes);
+        String fileName =MarkdownUtils.sanitizeFileName("app-" + appId + "-chat-history-" +
+                java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss").format(java.time.LocalDateTime.now()) + ".md");
+        return org.springframework.http.ResponseEntity.ok()
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + fileName)
+                .header("Content-Type", "text/markdown; charset=UTF-8")
+                .header("Cache-Control", "no-store")
+                .body(resource);
     }
 
 }

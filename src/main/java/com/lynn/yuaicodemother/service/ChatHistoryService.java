@@ -8,6 +8,8 @@ import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.core.service.IService;
 import com.lynn.yuaicodemother.model.entity.ChatHistory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
+import org.springframework.core.io.Resource;
+import org.springframework.http.ResponseEntity;
 
 import java.time.LocalDateTime;
 
@@ -64,5 +66,19 @@ public interface ChatHistoryService extends IService<ChatHistory> {
     QueryWrapper getQueryWrapper(ChatHistoryQueryRequest chatHistoryQueryRequest);
 
 
+    /**
+     * 导出应用下的对话历史为 Markdown 文件
+     * @param appId 应用 Id
+     * @param request 请求
+     * @return 导出的 Markdown 文件
+     */
+    ResponseEntity<Resource> exportAppChatHistoryMarkdown(Long appId, jakarta.servlet.http.HttpServletRequest request);
+
+    /**
+     * 导出应用下的对话历史为 Markdown 文件
+     * @param appId 应用 Id
+     * @return 导出的 Markdown 文件
+     */
+    ResponseEntity<org.springframework.core.io.Resource> exportChatHistoryMarkdownAdmin(Long appId);
 
 }

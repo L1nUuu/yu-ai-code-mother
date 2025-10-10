@@ -12,6 +12,16 @@
           </template>
           应用详情
         </a-button>
+        <a-tooltip :title="(!isOwner && !isAdmin) ? '非本人应用无法导出' : '导出对话为 Markdown'">
+          <span>
+            <a-button type="default" @click="exportConversation" :loading="exporting" :disabled="!isOwner && !isAdmin">
+              <template #icon>
+                <DownloadOutlined />
+              </template>
+              导出对话
+            </a-button>
+          </span>
+        </a-tooltip>
         <a-button type="primary" @click="deployApp" :loading="deploying">
           <template #icon>
             <CloudUploadOutlined />
@@ -163,7 +173,7 @@ import {
   deployApp as deployAppApi,
   deleteApp as deleteAppApi,
 } from '@/api/appController'
-import { listAppChatHistoryByPage } from '@/api/chatHistoryController'
+import { listAppChatHistoryByPage, exportAppChatHistoryMarkdown } from '@/api/chatHistoryController'
 import { CodeGenTypeEnum } from '@/utils/codeGenTypes'
 import request from '@/request'
 
@@ -180,6 +190,7 @@ import {
   ExportOutlined,
   InfoCircleOutlined,
   UpOutlined,
+  DownloadOutlined,
 } from '@ant-design/icons-vue'
 
 const route = useRoute()
@@ -229,6 +240,45 @@ const isAdmin = computed(() => {
 
 // 应用详情相关
 const appDetailVisible = ref(false)
+
+// 导出相关
+const exporting = ref(false)
+const exportConversation = async () => {
+  if (!isOwner.value && !isAdmin.value) {
+    message.warning('无权导出该应用的对话历史')
+    return
+  }
+  if (!appId.value) {
+    message.error('应用ID不存在')
+    return
+  }
+  try {
+    exporting.value = true
+    const res = await exportAppChatHistoryMarkdown({ appId: appId.value } as any)
+    const markdown = res.data
+    if (!markdown || typeof markdown !== 'string' || markdown.trim().length === 0) {
+      message.warning('暂无对话可导出')
+      return
+    }
+    const blob = new Blob([markdown], { type: 'text/markdown;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const safeName = (appInfo.value?.appName || '对话').replace(/[^\w\u4e00-\u9fa5\- ]/g, '')
+    const filename = `${safeName}-${new Date().toISOString().slice(0, 10)}.md`
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+    message.success('导出成功')
+  } catch (error) {
+    console.error('导出失败：', error)
+    message.error('导出失败，请重试')
+  } finally {
+    exporting.value = false
+  }
+}
 
 // 显示应用详情
 const showAppDetail = () => {

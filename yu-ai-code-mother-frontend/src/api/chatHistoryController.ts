@@ -2,6 +2,21 @@
 /* eslint-disable */
 import request from '@/request'
 
+/** 此处后端没有提供注释 GET /chatHistory/admin/export */
+export async function exportChatHistoryMarkdownAdmin(
+  // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
+  params: API.exportChatHistoryMarkdownAdminParams,
+  options?: { [key: string]: any }
+) {
+  return request<string>('/chatHistory/admin/export', {
+    method: 'GET',
+    params: {
+      ...params,
+    },
+    ...(options || {}),
+  })
+}
+
 /** 此处后端没有提供注释 POST /chatHistory/admin/list/page/vo */
 export async function listAllChatHistoryByPageAdmin(
   body: API.ChatHistoryQueryRequest,
@@ -31,6 +46,20 @@ export async function listAppChatHistoryByPage(
       pageSize: '10',
       ...queryParams,
     },
+    ...(options || {}),
+  })
+}
+
+/** 此处后端没有提供注释 GET /chatHistory/app/${param0}/export */
+export async function exportAppChatHistoryMarkdown(
+  // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
+  params: API.exportAppChatHistoryMarkdownParams,
+  options?: { [key: string]: any }
+) {
+  const { appId: param0, ...queryParams } = params
+  return request<string>(`/chatHistory/app/${param0}/export`, {
+    method: 'GET',
+    params: { ...queryParams },
     ...(options || {}),
   })
 }
