@@ -21,6 +21,7 @@
         <p class="app-author">
           {{ app.user?.userName || (featured ? '官方' : '未知用户') }}
         </p>
+        <p v-if="app.createTime" class="app-time">创建于 {{ formatRelativeTime(app.createTime) }}</p>
       </div>
     </div>
   </div>
@@ -51,6 +52,7 @@ const handleViewWork = () => {
   emit('view-work', props.app)
 }
 import { getAvatarSrc } from '@/utils/avatar'
+import { formatRelativeTime } from '@/utils/time'
 </script>
 
 <style scoped>
@@ -141,6 +143,15 @@ import { getAvatarSrc } from '@/utils/avatar'
   font-size: 14px;
   color: #666;
   margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.app-time {
+  font-size: 12px;
+  color: #8c8c8c;
+  margin: 2px 0 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

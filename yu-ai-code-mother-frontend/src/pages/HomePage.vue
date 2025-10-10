@@ -135,7 +135,7 @@ const createApp = async () => {
 // 我的应用列表
 const myApps = ref<API.AppVO[]>([])
 const myTotal = ref(0)
-const mySearch = reactive<API.AppQueryRequest>({ pageNum: 1, pageSize: 20 })
+const mySearch = reactive<API.AppQueryRequest>({ pageNum: 1, pageSize: 20, sortField: 'createTime', sortOrder: 'desc' })
 const fetchMyApps = async () => {
   const res = await listMyAppVoByPage({ ...mySearch })
   if (res.data.code === 0 && res.data.data) {
@@ -153,7 +153,7 @@ const onMyPageChange = (page: number) => {
 // 精选应用列表
 const goodApps = ref<API.AppVO[]>([])
 const goodTotal = ref(0)
-const goodSearch = reactive<API.AppQueryRequest>({ pageNum: 1, pageSize: 20 })
+const goodSearch = reactive<API.AppQueryRequest>({ pageNum: 1, pageSize: 20, sortField: 'createTime', sortOrder: 'desc' })
 const fetchGoodApps = async () => {
   const res = await listGoodAppVoByPage({ ...goodSearch })
   if (res.data.code === 0 && res.data.data) {
