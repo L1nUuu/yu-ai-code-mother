@@ -13,6 +13,7 @@ import cn.hutool.ai.core.Message;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
+import com.lynn.yuaicodemother.service.ChatHistoryService;
 import dev.langchain4j.community.store.memory.chat.redis.RedisChatMemoryStore;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
@@ -38,6 +39,8 @@ public class AiCodeGeneratorServiceFactory {
     private StreamingChatModel streamingChatModel;
     @Resource
     private RedisChatMemoryStore redisChatMemoryStore;
+    @Resource
+    private ChatHistoryService chatHistoryService;
 
 
     /**
@@ -74,6 +77,9 @@ public class AiCodeGeneratorServiceFactory {
                 .chatMemoryStore(redisChatMemoryStore)
                 .maxMessages(20)
                 .build();
+
+        // 加载 MySQL对话历史 到 记忆(chatMemory) 中
+        chatHistoryService.loadChatHistoryToMemory(appId, chatMemory, 20);
 
         return AiServices.builder(AiCodeGeneratorService.class)
                 .chatModel(chatModel)
