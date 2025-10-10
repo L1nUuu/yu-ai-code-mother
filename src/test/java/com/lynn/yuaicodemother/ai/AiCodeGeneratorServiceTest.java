@@ -47,4 +47,13 @@ class AiCodeGeneratorServiceTest {
         Assertions.assertNotNull( multiFileCodeResult);
         CodeFileSaver.saveMultiFileCodeResult(multiFileCodeResult);// 保存 多文件代码文件
     }
+
+
+    @Test
+    public void testChatMemory(){
+        aiCodeGeneratorService.generateHtmlCode("做个LYnn的博客，代码不超过20行");
+        aiCodeGeneratorService.generateHtmlCode("不生成代码，你告诉我你刚刚做了什么");
+        aiCodeGeneratorService.generateHtmlCode("做个吴浩楠的博客，代码不超过20行");
+        aiCodeGeneratorService.generateHtmlCode("不生成代码，你告诉我你刚刚做了什么");
+    }
 }
