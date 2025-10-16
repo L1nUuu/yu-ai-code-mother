@@ -2,6 +2,7 @@ package com.lynn.yuaicodemother.ai;
 
 import com.lynn.yuaicodemother.ai.model.HtmlCodeResult;
 import com.lynn.yuaicodemother.ai.model.MultiFileCodeResult;
+import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.SystemMessage;
 import reactor.core.publisher.Flux;
 
@@ -33,6 +34,14 @@ public interface AiCodeGeneratorService {
     @SystemMessage(fromResource = "prompt/codegen-multi-file-system-prompt.txt")
     Flux<String> generateMultiFileCodeStream(String userMessage);
 
+    /**
+     * 生成 Vue 项目代码（流式）
+     * @param userMessage 用户提示词
+     * @return AI的输出结果
+     */
+    @SystemMessage(fromResource = "prompt/codegen-vue-project-system-prompt.txt")
+    Flux<String> generateVueProjectFileCode(@MemoryId Long appId, String userMessage);
+
     // =============== 结构化输出 ==============
     /**
      * 生成 HTML 代码
@@ -49,6 +58,5 @@ public interface AiCodeGeneratorService {
      */
     @SystemMessage(fromResource = "prompt/codegen-multi-file-system-prompt.txt")
     MultiFileCodeResult generateMultiFileCode(String userMessage);
-
 
 }
