@@ -80,7 +80,7 @@ public class AiCodeGeneratorFacade {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "生成类型不能为空");
         }
         // 根据 appId 获取相应的 AI服务 实例
-        AiCodeGeneratorService aiCodeGeneratorService = aiCodeGeneratorServiceFactory.getAiCodeGeneratorService(appId);
+        AiCodeGeneratorService aiCodeGeneratorService = aiCodeGeneratorServiceFactory.getAiCodeGeneratorService(appId, codeGenTypeEnum);
         return switch (codeGenTypeEnum) {
             case HTML:
                 Flux<String> htmlCodeStream = aiCodeGeneratorService.generateHtmlCodeStream(userMessage); //生成结果流
@@ -88,6 +88,9 @@ public class AiCodeGeneratorFacade {
             case MULTI_FILE:
                 Flux<String> multiFileCodeStream = aiCodeGeneratorService.generateMultiFileCodeStream(userMessage);//生成结果流
                 yield processCodeStream(multiFileCodeStream, CodeGenTypeEnum.MULTI_FILE, appId);//处理结果流（解析保存）
+            case VUE_PROJECT:
+                Flux<String> vueProjectCodeStream = aiCodeGeneratorService.generateVueProjectFileCode(appId, userMessage);//生成结果流
+                yield processCodeStream(vueProjectCodeStream, CodeGenTypeEnum.MULTI_FILE, appId);
             default:
                 String errorMessage = "不支持的生成类型" + codeGenTypeEnum.getValue();
                 throw new BusinessException(ErrorCode.SYSTEM_ERROR, errorMessage);

@@ -73,7 +73,7 @@ public class AiCodeGeneratorServiceFactory {
      * @return
      */
     public AiCodeGeneratorService getAiCodeGeneratorService(Long appId) {
-        return getAiCodeGeneratorService(appId, CodeGenTypeEnum.HTML);
+        return getAiCodeGeneratorService(appId, CodeGenTypeEnum.MULTI_FILE);
     }
 
     /**
@@ -85,7 +85,6 @@ public class AiCodeGeneratorServiceFactory {
      */
     public AiCodeGeneratorService getAiCodeGeneratorService(Long appId ,CodeGenTypeEnum codeGenType) {
         String cacheKey = buildCacheKey(appId, codeGenType);
-
         return serviceCache.get(cacheKey, key -> createAiCodeGeneratorService(appId, codeGenType));
     }
 
