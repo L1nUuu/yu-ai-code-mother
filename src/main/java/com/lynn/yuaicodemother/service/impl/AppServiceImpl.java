@@ -9,6 +9,7 @@ import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
 import com.lynn.yuaicodemother.constant.AppConstant;
 import com.lynn.yuaicodemother.core.AiCodeGeneratorFacade;
+import com.lynn.yuaicodemother.core.handler.StreamHandlerExecutor;
 import com.lynn.yuaicodemother.core.parser.CodeParserExecutor;
 import com.lynn.yuaicodemother.core.saver.CodeFileSaverExecutor;
 import com.lynn.yuaicodemother.exception.BusinessException;
@@ -59,6 +60,8 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
     private AiCodeGeneratorFacade aiCodeGeneratorFacade;
     @Resource
     private ChatHistoryService chatHistoryService;
+    @Resource
+    private StreamHandlerExecutor streamHandlerExecutor;
 
     @Override
     public Flux<String> chatToGenCode(Long appId, String message, User loginUser) {
@@ -84,22 +87,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         // 7.调用AI生成代码（流式）
         Flux<String> contentFlux = aiCodeGeneratorFacade.generatorAndSaveCodeStream(message, codeGenTypeEnum, appId);
         // 8.收集AI响应的内容，并且在完成后保存记录到对话历史
-        StringBuilder aiResponseBuilder = new StringBuilder();
-        return contentFlux.map(chunk -> {
-                    // 实时收集代码片段
-                    aiResponseBuilder.append(chunk);
-                    return chunk;
-                })
-                .doOnComplete(() -> {
-                    // 流式返回完成后，保存AI消息到对话历史中
-                    String aiResponseBuilderString = aiResponseBuilder.toString();
-                    chatHistoryService.addChatMessage(appId, aiResponseBuilderString, ChatHistoryMessageTypeEnum.AI.getValue(), loginUser.getId());
-                })
-                .doOnError(error -> {
-                    // 如果AI回复失败，也需要保存记录到数据库中
-                    String errorMessage = "AI回复失败：" +  error.getMessage();
-                    chatHistoryService.addChatMessage(appId, errorMessage, ChatHistoryMessageTypeEnum.AI.getValue(), loginUser.getId());
-                });
+        return streamHandlerExecutor.doExecute(contentFlux, chatHistoryService, appId, loginUser, codeGenTypeEnum);
     }
 
     @Override

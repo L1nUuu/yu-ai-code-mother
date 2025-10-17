@@ -25,7 +25,7 @@ import java.nio.file.StandardOpenOption;
 public class FileWriteTool {
 
     @Tool("写入文件到指定路径")
-    private String writeFile(
+    public String writeFile(
             @P("文件的相对路径") String relativePath,
             @P("要写入的文件内容") String content,
             @MemoryId Long appId){

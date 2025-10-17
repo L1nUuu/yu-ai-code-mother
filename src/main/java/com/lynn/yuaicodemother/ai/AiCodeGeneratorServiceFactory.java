@@ -100,7 +100,7 @@ public class AiCodeGeneratorServiceFactory {
         MessageWindowChatMemory chatMemory = MessageWindowChatMemory.builder()
                 .id(appId)
                 .chatMemoryStore(redisChatMemoryStore)
-                .maxMessages(20)
+                .maxMessages(50)
                 .build();
 
         // 加载 MySQL对话历史 到 记忆(chatMemory) 中
@@ -114,7 +114,16 @@ public class AiCodeGeneratorServiceFactory {
                     .chatModel(chatModel)
                     .streamingChatModel(reasoningStreamingChatModel)
                     .chatMemoryProvider(
-                            memoryId -> chatMemory
+                            //todo
+                            memoryId -> {
+                                log.info("当前memoryId为: {}，加载对话历史到记忆中", memoryId);
+                                return MessageWindowChatMemory.builder()
+                                        .id(memoryId)
+                                        .chatMemoryStore(redisChatMemoryStore)
+                                        .maxMessages(50)
+                                        .build();
+                            }
+
                     )
                     .tools(new FileWriteTool())
                     .hallucinatedToolNameStrategy(toolExecutionRequest ->

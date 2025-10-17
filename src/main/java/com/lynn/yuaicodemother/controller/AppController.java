@@ -135,8 +135,8 @@ public class AppController {
 
         // 设置应用名称暂时未initPrompt 前 12位
         app.setAppName(initPrompt.substring(0, Math.min(initPrompt.length(), 12)));
-        // 暂时设置为多文件生成 TODO
-        app.setCodeGenType(CodeGenTypeEnum.MULTI_FILE.getValue());
+        // 暂时设置为VUE工程 TODO
+        app.setCodeGenType(CodeGenTypeEnum.VUE_PROJECT.getValue());
 
         // 校验应用数据
         appService.validApp(app, true);
