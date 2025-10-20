@@ -9,6 +9,7 @@ import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
 import com.lynn.yuaicodemother.constant.AppConstant;
 import com.lynn.yuaicodemother.core.AiCodeGeneratorFacade;
+import com.lynn.yuaicodemother.core.builder.VueProjectBuilder;
 import com.lynn.yuaicodemother.core.handler.StreamHandlerExecutor;
 import com.lynn.yuaicodemother.core.parser.CodeParserExecutor;
 import com.lynn.yuaicodemother.core.saver.CodeFileSaverExecutor;
@@ -62,6 +63,8 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
     private ChatHistoryService chatHistoryService;
     @Resource
     private StreamHandlerExecutor streamHandlerExecutor;
+    @Resource
+    private VueProjectBuilder vueProjectBuilder;
 
     @Override
     public Flux<String> chatToGenCode(Long appId, String message, User loginUser) {
@@ -119,7 +122,25 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         if (!sourceDir.exists() || !sourceDir.isDirectory()) {
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "应用代码不存在，请先生成代码");
         }
-        // 7.复制文件到部署目录
+        // 7. 如果是Vue 项目，则需要先构建项目，成功之后再复制dist文件夹到部署目录
+        CodeGenTypeEnum codeGenTypeEnum = CodeGenTypeEnum.getEnumByValue(codeGenType);
+        if (codeGenTypeEnum == CodeGenTypeEnum.VUE_PROJECT) {
+            // 7.1 构建项目
+            boolean buildResult = vueProjectBuilder.buildProject(sourceDirPath);
+            if (!buildResult) {
+                throw new BusinessException(ErrorCode.SYSTEM_ERROR, "Vue 构建失败，请重试");
+            }
+            // 7.2 检查 dist 目录是否存在
+            String distDirPath = sourceDirPath + File.separator + "dist";
+            File distDir = new File(distDirPath);
+            if (!distDir.exists() || !distDir.isDirectory()) {
+                throw new BusinessException(ErrorCode.SYSTEM_ERROR, "Vue 项目构建完成但未生成dist目录，请重试");
+            }
+            // 7.3 复制dist文件夹到部署目录
+            sourceDir = distDir;
+            log.info("Vue 项目构建成功，将部署 dist 目录：{}",distDir.getAbsolutePath());
+        }
+        // 8.复制文件到部署目录
         String deployDirPath = AppConstant.CODE_DEPLOY_ROOT_DIR + File.separator + deployKey;
         try {
             FileUtil.copyContent(sourceDir, new File(deployDirPath), true);
