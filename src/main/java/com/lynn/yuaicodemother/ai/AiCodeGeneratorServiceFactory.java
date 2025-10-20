@@ -53,22 +53,23 @@ public class AiCodeGeneratorServiceFactory {
     /**
      * AI 实例缓存
      * 缓存策略：
-     *  - 最大缓存1000个实例
-     *  - 写入后30分钟过期
-     *  - 访问后10分钟过期
+     * - 最大缓存1000个实例
+     * - 写入后30分钟过期
+     * - 访问后10分钟过期
      */
-    private final Cache<String,AiCodeGeneratorService> serviceCache = Caffeine.newBuilder()
+    private final Cache<String, AiCodeGeneratorService> serviceCache = Caffeine.newBuilder()
             .maximumSize(1000)
             .expireAfterWrite(Duration.ofMinutes(30))
             .expireAfterAccess(Duration.ofMinutes(10))
             .removalListener((key, value, cause) ->
-                    log.debug("AI服务实例被移除，缓存键: {}，原因为：{}", key,cause))
+                    log.debug("AI服务实例被移除，缓存键: {}，原因为：{}", key, cause))
             .build();
 
     /**
      * 根据应用ID获取 AI 服务实例（为了兼容老逻辑）
-     *  -- 1.如果缓存中存在，则直接返回
-     *  -- 2.如果缓存中不存在，则创建并缓存
+     * -- 1.如果缓存中存在，则直接返回
+     * -- 2.如果缓存中不存在，则创建并缓存
+     *
      * @param appId
      * @return
      */
@@ -78,19 +79,21 @@ public class AiCodeGeneratorServiceFactory {
 
     /**
      * 获取 AI 服务实例
-     *  -- 1.如果缓存中存在，则直接返回
-     *  -- 2.如果缓存中不存在，则创建并缓存
+     * -- 1.如果缓存中存在，则直接返回
+     * -- 2.如果缓存中不存在，则创建并缓存
+     *
      * @param appId
      * @return
      */
-    public AiCodeGeneratorService getAiCodeGeneratorService(Long appId ,CodeGenTypeEnum codeGenType) {
+    public AiCodeGeneratorService getAiCodeGeneratorService(Long appId, CodeGenTypeEnum codeGenType) {
         String cacheKey = buildCacheKey(appId, codeGenType);
         return serviceCache.get(cacheKey, key -> createAiCodeGeneratorService(appId, codeGenType));
     }
 
     /**
      * 创建 AI 服务实例
-     * @param appId 应用ID
+     *
+     * @param appId       应用ID
      * @param codeGenType 代码生成类型
      * @return
      */
@@ -107,23 +110,14 @@ public class AiCodeGeneratorServiceFactory {
         chatHistoryService.loadChatHistoryToMemory(appId, chatMemory, 20);
 
         // 根据代码生成类型选择不同的模型配置
-        return switch (codeGenType){
+        return switch (codeGenType) {
 
             // Vue 项目生成，使用工具调用和推理模型
             case VUE_PROJECT -> AiServices.builder(AiCodeGeneratorService.class)
                     .chatModel(chatModel)
                     .streamingChatModel(reasoningStreamingChatModel)
                     .chatMemoryProvider(
-                            //todo
-                            memoryId -> {
-                                log.info("当前memoryId为: {}，加载对话历史到记忆中", memoryId);
-                                return MessageWindowChatMemory.builder()
-                                        .id(memoryId)
-                                        .chatMemoryStore(redisChatMemoryStore)
-                                        .maxMessages(50)
-                                        .build();
-                            }
-
+                            memoryId -> chatMemory
                     )
                     .tools(new FileWriteTool())
                     .hallucinatedToolNameStrategy(toolExecutionRequest ->
@@ -140,7 +134,8 @@ public class AiCodeGeneratorServiceFactory {
                     .streamingChatModel(openAiStreamingChatModel)
                     .chatMemory(chatMemory)
                     .build();
-            default -> throw new BusinessException(ErrorCode.SYSTEM_ERROR, "不支持的代码生成类型：" + codeGenType.getValue());
+            default ->
+                    throw new BusinessException(ErrorCode.SYSTEM_ERROR, "不支持的代码生成类型：" + codeGenType.getValue());
         };
     }
 
@@ -157,11 +152,12 @@ public class AiCodeGeneratorServiceFactory {
 
     /**
      * 构造缓存键
-     * @param appId 应用ID
+     *
+     * @param appId       应用ID
      * @param codeGenType 代码生成类型
      * @return 缓存键
      */
-    private String buildCacheKey(Long appId,CodeGenTypeEnum codeGenType) {
+    private String buildCacheKey(Long appId, CodeGenTypeEnum codeGenType) {
         return appId + "_" + codeGenType.getValue();
     }
 }

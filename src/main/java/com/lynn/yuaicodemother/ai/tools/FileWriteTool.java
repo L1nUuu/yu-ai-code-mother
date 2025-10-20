@@ -4,6 +4,7 @@ import com.lynn.yuaicodemother.constant.AppConstant;
 import com.lynn.yuaicodemother.model.entity.App;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.agent.tool.ToolMemoryId;
 import dev.langchain4j.service.MemoryId;
 import lombok.extern.slf4j.Slf4j;
 
@@ -28,7 +29,7 @@ public class FileWriteTool {
     public String writeFile(
             @P("文件的相对路径") String relativePath,
             @P("要写入的文件内容") String content,
-            @MemoryId Long appId){
+            @ToolMemoryId Long appId){
         try {
             Path path = Paths.get(relativePath);
             if (!path.isAbsolute()){
