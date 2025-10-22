@@ -2,17 +2,13 @@ package com.lynn.yuaicodemother.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollUtil;
-import cn.hutool.core.collection.CollectionUtil;
 import cn.hutool.core.io.FileUtil;
-import cn.hutool.core.io.IORuntimeException;
 import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
 import com.lynn.yuaicodemother.constant.AppConstant;
 import com.lynn.yuaicodemother.core.AiCodeGeneratorFacade;
 import com.lynn.yuaicodemother.core.builder.VueProjectBuilder;
 import com.lynn.yuaicodemother.core.handler.StreamHandlerExecutor;
-import com.lynn.yuaicodemother.core.parser.CodeParserExecutor;
-import com.lynn.yuaicodemother.core.saver.CodeFileSaverExecutor;
 import com.lynn.yuaicodemother.exception.BusinessException;
 import com.lynn.yuaicodemother.exception.ErrorCode;
 import com.lynn.yuaicodemother.exception.ThrowUtils;
@@ -21,12 +17,12 @@ import com.lynn.yuaicodemother.model.entity.App;
 import com.lynn.yuaicodemother.model.entity.User;
 import com.lynn.yuaicodemother.model.enums.ChatHistoryMessageTypeEnum;
 import com.lynn.yuaicodemother.model.enums.CodeGenTypeEnum;
-import com.lynn.yuaicodemother.model.enums.UserRoleEnum;
 import com.lynn.yuaicodemother.model.vo.AppVO;
 import com.lynn.yuaicodemother.model.vo.UserVO;
 import com.lynn.yuaicodemother.service.AppService;
 import com.lynn.yuaicodemother.mapper.AppMapper;
 import com.lynn.yuaicodemother.service.ChatHistoryService;
+import com.lynn.yuaicodemother.service.ScreenshotService;
 import com.lynn.yuaicodemother.service.UserService;
 import com.mybatisflex.core.paginate.Page;
 import com.mybatisflex.core.query.QueryWrapper;
@@ -38,8 +34,6 @@ import reactor.core.publisher.Flux;
 
 import java.io.File;
 import java.io.Serializable;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -65,6 +59,8 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
     private StreamHandlerExecutor streamHandlerExecutor;
     @Resource
     private VueProjectBuilder vueProjectBuilder;
+    @Resource
+    private ScreenshotService screenshotService;
 
     @Override
     public Flux<String> chatToGenCode(Long appId, String message, User loginUser) {
@@ -147,13 +143,41 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         } catch (Exception e) {
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "应用部署失败" + e.getMessage());
         }
-        // 8.更新数据库
+        // 9.更新数据库
         app.setDeployKey(deployKey); //设置deployKey
         app.setDeployedTime(LocalDateTime.now()); //设置部署时间
         boolean updateResult = this.updateById(app);
         ThrowUtils.throwIf(!updateResult, ErrorCode.OPERATION_ERROR, "更新应用部署信息失败");
-        // 9.返回可访问的URL地址
-        return AppConstant.CODE_DEPLOY_HOST + "/" + deployKey;
+        // 10.返回可访问的URL地址
+        String appDeployUrl = AppConstant.CODE_DEPLOY_HOST + "/" + deployKey;
+        // 11. 异步生成截图并且更新应用封面
+        generateAppScreenshotAsync(appId, appDeployUrl);
+
+        return appDeployUrl;
+    }
+
+    @Override
+    public void generateAppScreenshotAsync(Long appId, String appDeployUrl){
+        // 启用虚拟线程并执行
+        Thread.startVirtualThread(() -> {
+            try {
+                // 调用截图服务生成截图并上传
+                String screenshotUrl = screenshotService.generateAndUploadScreenshot(appDeployUrl);
+                // 更新数据库的封面
+                App app = new App();
+                app.setId(appId);
+                app.setCover(screenshotUrl);
+                boolean updateResult = this.updateById(app);
+                // 这里抛出的异常也会被下面的 catch 捕获
+                ThrowUtils.throwIf(!updateResult, ErrorCode.OPERATION_ERROR, "更新应用封面为截图失败");
+
+                log.info("异步更新应用封面成功, appId: {}", appId);
+
+            } catch (Exception e) {
+                log.error("异步更新应用封面失败, appId: {}, url: {}", appId, appDeployUrl, e);
+                // TODO: 在这里可以添加重试逻辑，或者将失败任务记录到数据库
+            }
+        });
     }
 
     @Override
