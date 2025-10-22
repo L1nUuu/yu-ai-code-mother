@@ -8,6 +8,7 @@ import cn.hutool.core.util.StrUtil;
 import com.lynn.yuaicodemother.exception.BusinessException;
 import com.lynn.yuaicodemother.exception.ErrorCode;
 import com.lynn.yuaicodemother.exception.ThrowUtils;
+import dev.langchain4j.agent.tool.P;
 import io.github.bonigarcia.wdm.WebDriverManager;
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
@@ -29,14 +30,21 @@ import java.util.UUID;
 @Component
 public class WebScreenshotUtils {
 
-    private final WebDriver webDriver;
 
-    public WebScreenshotUtils() {
-        log.info("Initializing Headless WebDriver Bean...");
-        final int DEFAULT_WIDTH = 1600;
-        final int DEFAULT_HEIGHT = 900;
-        this.webDriver = initChromeDriver(DEFAULT_WIDTH, DEFAULT_HEIGHT);
-    }
+    /**
+     * 线程本地变量，用于存储 WebDriver 实例
+     * 每个线程对应一个 WebDriver 实例
+     */
+    private final ThreadLocal<WebDriver> webDriverThreadLocal = new ThreadLocal<>(){
+        @Override
+        protected WebDriver initialValue() {
+            log.info("正在为线程初始化 WebDriver ...: {}", Thread.currentThread().getName());
+            final int DEFAULT_WIDTH = 1600;
+            final int DEFAULT_HEIGHT = 900;
+            return initChromeDriver(DEFAULT_WIDTH, DEFAULT_HEIGHT);
+        }
+    };
+
 
     /**
      * 生成网页截图
@@ -50,6 +58,7 @@ public class WebScreenshotUtils {
             log.info("网页截图失败，网页地址不能为空");
             return null; // 这里返回空值是为了在外面处理异常
         }
+        WebDriver webDriver = webDriverThreadLocal.get();
         try {
             // 创建临时目录
             String rootPath = System.getProperty("user.dir") + "/tmp/screenshots/" + UUID.randomUUID().toString().substring(0, 8);
@@ -78,21 +87,24 @@ public class WebScreenshotUtils {
         } catch (Exception e) {
             log.error("网页截图失败：{}", webUrl, e);
             return null;
+        }finally {
+            // 先判断webDriver是否停止
+            if(webDriver != null) {
+                log.info("正在关闭 WebDriver for Thread：{}", Thread.currentThread().getName());
+                webDriver.quit();
+                log.info("已关闭 WebDriver for Thread：{}", Thread.currentThread().getName());
+            }
+            // 在每个webDriver使用后，将其从线程本地变量中移除
+            webDriverThreadLocal.remove();
         }
 
     }
 
-    @PreDestroy //保证浏览器关闭，释放资源
-    public void destroy() {
-        log.info("正在关闭WebDriver...");
-        webDriver.quit();
-        log.info("WebDriver已关闭...");
-    }
 
     /**
      * 初始化 Chrome 浏览器驱动
      */
-    private WebDriver initChromeDriver(int width, int height) {
+    private  WebDriver initChromeDriver(int width, int height) {
         try {
             // 自动管理 ChromeDriver
             WebDriverManager.chromedriver().setup();

@@ -134,7 +134,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
             }
             // 7.3 复制dist文件夹到部署目录
             sourceDir = distDir;
-            log.info("Vue 项目构建成功，将部署 dist 目录：{}",distDir.getAbsolutePath());
+            log.info("Vue 项目构建成功，将部署 dist 目录：{}", distDir.getAbsolutePath());
         }
         // 8.复制文件到部署目录
         String deployDirPath = AppConstant.CODE_DEPLOY_ROOT_DIR + File.separator + deployKey;
@@ -157,27 +157,29 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
     }
 
     @Override
-    public void generateAppScreenshotAsync(Long appId, String appDeployUrl){
+    public void generateAppScreenshotAsync(Long appId, String appDeployUrl) {
         // 启用虚拟线程并执行
-        Thread.startVirtualThread(() -> {
-            try {
-                // 调用截图服务生成截图并上传
-                String screenshotUrl = screenshotService.generateAndUploadScreenshot(appDeployUrl);
-                // 更新数据库的封面
-                App app = new App();
-                app.setId(appId);
-                app.setCover(screenshotUrl);
-                boolean updateResult = this.updateById(app);
-                // 这里抛出的异常也会被下面的 catch 捕获
-                ThrowUtils.throwIf(!updateResult, ErrorCode.OPERATION_ERROR, "更新应用封面为截图失败");
+        Thread.ofVirtual()
+                .name("screenshotVirtualThread-" + System.currentTimeMillis())
+                .start(() -> {
+                    try {
+                        // 调用截图服务生成截图并上传
+                        String screenshotUrl = screenshotService.generateAndUploadScreenshot(appDeployUrl);
+                        // 更新数据库的封面
+                        App app = new App();
+                        app.setId(appId);
+                        app.setCover(screenshotUrl);
+                        boolean updateResult = this.updateById(app);
+                        // 这里抛出的异常也会被下面的 catch 捕获
+                        ThrowUtils.throwIf(!updateResult, ErrorCode.OPERATION_ERROR, "更新应用封面为截图失败");
 
-                log.info("异步更新应用封面成功, appId: {}", appId);
+                        log.info("异步更新应用封面成功, appId: {}", appId);
 
-            } catch (Exception e) {
-                log.error("异步更新应用封面失败, appId: {}, url: {}", appId, appDeployUrl, e);
-                // TODO: 在这里可以添加重试逻辑，或者将失败任务记录到数据库
-            }
-        });
+                    } catch (Exception e) {
+                        log.error("异步更新应用封面失败, appId: {}, url: {}", appId, appDeployUrl, e);
+                        // TODO: 在这里可以添加重试逻辑，或者将失败任务记录到数据库
+                    }
+                });
     }
 
     @Override
@@ -311,16 +313,17 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
 
     /**
      * 删除应用时，关联删除对话历史
+     *
      * @param id 应用id
      * @return 删除应用结果
      */
     @Override
     public boolean removeById(Serializable id) {
-        if (id == null){
+        if (id == null) {
             return false;
         }
         long appId = Long.parseLong(id.toString());
-        if (appId <= 0){
+        if (appId <= 0) {
             return false;
         }
         try {
