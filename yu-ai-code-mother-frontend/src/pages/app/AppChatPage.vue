@@ -39,9 +39,9 @@
         <div class="messages-container" ref="messagesContainer">
           <!-- 加载更多按钮 -->
           <div v-if="hasMoreHistory" class="load-more-container">
-            <a-button 
-              type="link" 
-              @click="loadMoreHistory" 
+            <a-button
+              type="link"
+              @click="loadMoreHistory"
               :loading="loadingHistory"
               class="load-more-btn"
             >
@@ -51,7 +51,7 @@
               加载更多历史消息
             </a-button>
           </div>
-          
+
           <div v-for="(message, index) in messages" :key="index" class="message-item">
             <div v-if="message.type === 'user'" class="user-message">
               <div class="message-content">{{ message.content }}</div>
@@ -353,28 +353,28 @@ const loadChatHistory = async (isLoadMore = false) => {
 // 加载更多历史消息
 const loadMoreHistory = async () => {
   if (!messagesContainer.value || loadingHistory.value) return
-  
+
   // 记录加载前的滚动位置和容器高度
   const scrollTop = messagesContainer.value.scrollTop
   const scrollHeight = messagesContainer.value.scrollHeight
   const currentMessagesCount = messages.value.length
-  
+
   try {
     await loadChatHistory(true)
-    
+
     // 等待DOM更新后调整滚动位置
     await nextTick()
-    
+
     if (messagesContainer.value) {
       // 计算新增内容的高度
       const newScrollHeight = messagesContainer.value.scrollHeight
       const heightDiff = newScrollHeight - scrollHeight
-      
+
       // 如果确实加载了新消息，才调整滚动位置
       if (messages.value.length > currentMessagesCount && heightDiff > 0) {
         // 使用平滑滚动调整到新位置
         const targetScrollTop = scrollTop + heightDiff
-        
+
         // 添加一个小的延迟，让用户能感知到新内容的加载
         setTimeout(() => {
           if (messagesContainer.value) {
@@ -508,29 +508,33 @@ const generateCode = async (userMessage: string, aiMessageIndex: number) => {
       appId: appId.value || '',
       message: userMessage,
     })
-
     const url = `${baseURL}/app/chat/gen/code?${params}`
 
-    // 创建 EventSource 连接
     eventSource = new EventSource(url, {
       withCredentials: true,
     })
 
-    let fullContent = ''
-
-    // 处理接收到的消息
     eventSource.onmessage = function (event) {
       if (streamCompleted) return
 
       try {
-        // 解析JSON包装的数据
-        const parsed = JSON.parse(event.data)
-        const content = parsed.d
+        const outer = JSON.parse(event.data)
+        const d = outer?.d
+        if (d === undefined || d === null) return
 
-        // 拼接内容
-        if (content !== undefined && content !== null) {
-          fullContent += content
-          messages.value[aiMessageIndex].content = fullContent
+        let chunk = ''
+        if (typeof d === 'string') {
+          chunk = d
+        } else {
+          try {
+            chunk = JSON.stringify(d)
+          } catch {
+            chunk = String(d)
+          }
+        }
+
+        if (chunk) {
+          messages.value[aiMessageIndex].content += chunk
           messages.value[aiMessageIndex].loading = false
           scrollToBottom()
         }
@@ -540,10 +544,8 @@ const generateCode = async (userMessage: string, aiMessageIndex: number) => {
       }
     }
 
-    // 处理done事件
     eventSource.addEventListener('done', function () {
       if (streamCompleted) return
-
       streamCompleted = true
       isGenerating.value = false
       eventSource?.close()
@@ -555,10 +557,8 @@ const generateCode = async (userMessage: string, aiMessageIndex: number) => {
       }, 1000)
     })
 
-    // 处理错误
     eventSource.onerror = function () {
       if (streamCompleted || !isGenerating.value) return
-      // 检查是否是正常的连接关闭
       if (eventSource?.readyState === EventSource.CONNECTING) {
         streamCompleted = true
         isGenerating.value = false

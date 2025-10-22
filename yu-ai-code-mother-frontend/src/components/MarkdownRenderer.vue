@@ -3,12 +3,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import MarkdownIt from 'markdown-it'
-import hljs from 'highlight.js'
-
-// 引入代码高亮样式
-import 'highlight.js/styles/github.css'
+import { createHighlighter } from 'shiki'
+import type { Highlighter } from 'shiki'
 
 interface Props {
   content: string
@@ -16,30 +14,40 @@ interface Props {
 
 const props = defineProps<Props>()
 
-// 配置 markdown-it 实例
+const highlighter = ref<Highlighter | null>(null)
+const highlighterReady = ref(false)
+
 const md: MarkdownIt = new MarkdownIt({
   html: true,
   linkify: true,
   typographer: true,
   highlight: function (str: string, lang: string): string {
-    if (lang && hljs.getLanguage(lang)) {
+    if (highlighter.value) {
       try {
-        return (
-          '<pre class="hljs"><code>' +
-          hljs.highlight(str, { language: lang, ignoreIllegals: true }).value +
-          '</code></pre>'
-        )
+        const language = lang || 'vue'
+        return highlighter.value.codeToHtml(str, { lang: language, theme: 'github-light' })
       } catch {
-        // 忽略错误，使用默认处理
+        // fallback to plain text
       }
     }
-
-    return '<pre class="hljs"><code>' + md.utils.escapeHtml(str) + '</code></pre>'
+    return '<pre class="shiki"><code>' + md.utils.escapeHtml(str) + '</code></pre>'
   },
 })
 
-// 计算渲染后的 Markdown
+onMounted(async () => {
+  try {
+    highlighter.value = await createHighlighter({
+      themes: ['github-light'],
+      langs: ['vue', 'html', 'xml', 'javascript', 'typescript', 'css', 'json']
+    })
+    highlighterReady.value = true
+  } catch (e) {
+    console.error('初始化 Shiki 失败', e)
+  }
+})
+
 const renderedMarkdown = computed(() => {
+  void highlighterReady.value
   return md.render(props.content)
 })
 </script>
@@ -170,48 +178,16 @@ const renderedMarkdown = computed(() => {
   margin: 1.5em 0;
 }
 
-/* 代码高亮样式优化 */
-.markdown-content :deep(.hljs) {
+
+.markdown-content :deep(.shiki) {
   background-color: #f8f8f8 !important;
+  border: 1px solid #e1e1e1;
   border-radius: 6px;
+  padding: 1em;
+  overflow-x: auto;
+  margin: 1em 0;
   font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
   font-size: 0.9em;
   line-height: 1.4;
-}
-
-/* 特定语言的代码块样式 */
-.markdown-content :deep(.hljs-keyword) {
-  color: #d73a49;
-  font-weight: 600;
-}
-
-.markdown-content :deep(.hljs-string) {
-  color: #032f62;
-}
-
-.markdown-content :deep(.hljs-comment) {
-  color: #6a737d;
-  font-style: italic;
-}
-
-.markdown-content :deep(.hljs-number) {
-  color: #005cc5;
-}
-
-.markdown-content :deep(.hljs-function) {
-  color: #6f42c1;
-}
-
-.markdown-content :deep(.hljs-tag) {
-  color: #22863a;
-}
-
-.markdown-content :deep(.hljs-attr) {
-  color: #6f42c1;
-}
-
-.markdown-content :deep(.hljs-title) {
-  color: #6f42c1;
-  font-weight: 600;
 }
 </style>
