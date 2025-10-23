@@ -11,6 +11,7 @@ import com.lynn.yuaicodemother.service.ScreenshotService;
 import com.lynn.yuaicodemother.util.WebScreenshotUtils;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import net.bytebuddy.implementation.bytecode.Throw;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
@@ -59,6 +60,14 @@ public class ScreenshotServiceImpl implements ScreenshotService {
             if (StrUtil.isNotBlank(compressedImagePath)){
                 cleanupLocalFile(compressedImagePath);
             }
+        }
+    }
+
+    @Override
+    public void deleteCosScreenshot(String screenshotUrl) {
+        String result = cosManager.deleteFile(screenshotUrl);
+        if (StrUtil.isBlank(result)){
+            throw  new BusinessException(ErrorCode.SYSTEM_ERROR, "删除图片失败");
         }
     }
 

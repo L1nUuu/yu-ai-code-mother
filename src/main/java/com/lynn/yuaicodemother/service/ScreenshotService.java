@@ -13,4 +13,10 @@ public interface ScreenshotService {
      * @return
      */
     String generateAndUploadScreenshot(String webUrl);
+
+    /**
+     * 删除 COS 截图
+     * @param screenshotUrl 截图地址
+     */
+    void deleteCosScreenshot(String screenshotUrl);
 }

@@ -18,11 +18,13 @@ import com.lynn.yuaicodemother.model.entity.User;
 import com.lynn.yuaicodemother.model.enums.CodeGenTypeEnum;
 import com.lynn.yuaicodemother.model.vo.AppVO;
 import com.lynn.yuaicodemother.service.AppService;
+import com.lynn.yuaicodemother.service.ScreenshotService;
 import com.lynn.yuaicodemother.service.UserService;
 import com.mybatisflex.core.paginate.Page;
 import com.mybatisflex.core.query.QueryWrapper;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpRequest;
 import org.springframework.http.MediaType;
@@ -42,6 +44,7 @@ import java.util.Map;
  */
 @RestController
 @RequestMapping("/app")
+@Slf4j
 public class AppController {
 
     @Autowired
@@ -49,6 +52,9 @@ public class AppController {
 
     @Resource
     private UserService userService;
+
+    @Resource
+    private ScreenshotService screenshotService;
 
     /**
      * 生成流式代码
@@ -217,8 +223,28 @@ public class AppController {
             throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
         }
 
+        String coverUrl = oldApp.getCover();
+        String deployKey = oldApp.getDeployKey();
+        // 1. 删除应用
         boolean result = appService.removeById(appId);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
+
+
+        // 2. 删除 COS 截图（尽力而为）
+        // 判断用户是否部署过应用 如果部署过就删除cos截图
+        if (deployKey != null) {
+            try {
+                // 尝试删除
+                screenshotService.deleteCosScreenshot(coverUrl);
+            } catch (Exception e) {
+                // 如果删除失败（例如URL格式错误、COS权限问题、网络问题）
+                // 记录一个 ERROR 级别的日志，以便人工介入或SRE告警
+                // 但是不把异常抛出去，因为主操作已经成功了
+                log.error("应用(id: {})删除成功, 但关联的COS截图(url: {})删除失败. 需要人工清理. 错误: {}",
+                        appId, coverUrl, e.getMessage());
+            }
+        }
+
 
         return ResultUtils.success(true);
     }
@@ -309,7 +335,29 @@ public class AppController {
         // 判断是否存在
         App oldApp = appService.getById(id);
         ThrowUtils.throwIf(oldApp == null, ErrorCode.NOT_FOUND_ERROR);
+
+        String coverUrl = oldApp.getCover();
+        String deployKey = oldApp.getDeployKey();
+
+        // 1. 删除应用
         boolean result = appService.removeById(id);
+        ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
+
+        // 2. 删除 COS 截图（尽力而为）
+        // 判断用户是否部署过应用 如果部署过就删除cos截图
+        if (deployKey != null) {
+            try {
+                // 尝试删除
+                screenshotService.deleteCosScreenshot(coverUrl);
+            } catch (Exception e) {
+                // 如果删除失败（例如URL格式错误、COS权限问题、网络问题）
+                // 记录一个 ERROR 级别的日志，以便人工介入或SRE告警
+                // 但是不把异常抛出去，因为主操作已经成功了
+                log.error("应用(id: {})删除成功, 但关联的COS截图(url: {})删除失败. 需要人工清理. 错误: {}",
+                        id, coverUrl, e.getMessage());
+            }
+        }
+
         return ResultUtils.success(result);
     }
 
