@@ -12,13 +12,33 @@
           </template>
           应用详情
         </a-button>
-        <a-tooltip :title="(!isOwner && !isAdmin) ? '非本人应用无法导出' : '导出对话为 Markdown'">
+        <a-tooltip :title="!isOwner && !isAdmin ? '非本人应用无法导出' : '导出对话为 Markdown'">
           <span>
-            <a-button type="default" @click="exportConversation" :loading="exporting" :disabled="!isOwner && !isAdmin">
+            <a-button
+              type="default"
+              @click="exportConversation"
+              :loading="exporting"
+              :disabled="!isOwner && !isAdmin"
+            >
               <template #icon>
                 <DownloadOutlined />
               </template>
               导出对话
+            </a-button>
+          </span>
+        </a-tooltip>
+        <a-tooltip :title="(!isOwner && !isAdmin) ? '非本人应用无法下载' : '下载应用代码为 ZIP'">
+          <span>
+            <a-button
+              type="default"
+              @click="downloadCode"
+              :loading="downloading"
+              :disabled="!isOwner && !isAdmin"
+            >
+              <template #icon>
+                <DownloadOutlined />
+              </template>
+              下载代码
             </a-button>
           </span>
         </a-tooltip>
@@ -229,6 +249,9 @@ const deploying = ref(false)
 const deployModalVisible = ref(false)
 const deployUrl = ref('')
 
+// 下载相关
+const downloading = ref(false)
+
 // 权限相关
 const isOwner = computed(() => {
   return appInfo.value?.userId === loginUserStore.loginUser.id
@@ -254,7 +277,7 @@ const exportConversation = async () => {
   }
   try {
     exporting.value = true
-    const res = await exportAppChatHistoryMarkdown({ appId: appId.value } as any)
+    const res = await exportAppChatHistoryMarkdown({ appId: appId.value as unknown as number })
     const markdown = res.data
     if (!markdown || typeof markdown !== 'string' || markdown.trim().length === 0) {
       message.warning('暂无对话可导出')
@@ -294,8 +317,8 @@ const loadChatHistory = async (isLoadMore = false) => {
   }
 
   try {
-    const params: any = {
-      appId: appId.value,
+    const params: API.listAppChatHistoryByPageParams = {
+      appId: appId.value as unknown as number,
       pageSize: 10,
     }
 
@@ -310,8 +333,8 @@ const loadChatHistory = async (isLoadMore = false) => {
 
       // 先按创建时间升序排序（旧消息在前，新消息在后）
       const sortedHistoryData = historyData.slice().sort((a, b) => {
-        const ta = new Date(a.createTime).getTime()
-        const tb = new Date(b.createTime).getTime()
+        const ta = a.createTime ? new Date(a.createTime).getTime() : 0
+        const tb = b.createTime ? new Date(b.createTime).getTime() : 0
         return ta - tb
       })
 
@@ -380,7 +403,7 @@ const loadMoreHistory = async () => {
           if (messagesContainer.value) {
             messagesContainer.value.scrollTo({
               top: targetScrollTop,
-              behavior: 'smooth'
+              behavior: 'smooth',
             })
           }
         }, 100)
@@ -407,12 +430,12 @@ const fetchAppInfo = async () => {
   if (route.query.view) {
     router.replace({
       path: route.path,
-      query: { ...route.query, view: undefined }
+      query: { ...route.query, view: undefined },
     })
   }
 
   try {
-    const res = await getAppVoById({ id })
+    const res = await getAppVoById({ id: id as unknown as number })
     if (res.data.code === 0 && res.data.data) {
       appInfo.value = res.data.data
 
@@ -469,13 +492,13 @@ const sendMessage = async () => {
     return
   }
 
-  const message = userInput.value.trim()
+  const messageText = userInput.value.trim()
   userInput.value = ''
 
   // 添加用户消息
   messages.value.push({
     type: 'user',
-    content: message,
+    content: messageText,
   })
 
   // 添加AI消息占位符
@@ -491,7 +514,7 @@ const sendMessage = async () => {
 
   // 开始生成
   isGenerating.value = true
-  await generateCode(message, aiMessageIndex)
+  await generateCode(messageText, aiMessageIndex)
 }
 
 // 生成代码 - 使用 EventSource 处理流式响应
@@ -614,7 +637,7 @@ const deployApp = async () => {
   deploying.value = true
   try {
     const res = await deployAppApi({
-      appId: appId.value,
+      appId: appId.value as unknown as number,
     })
 
     if (res.data.code === 0 && res.data.data) {
@@ -629,6 +652,41 @@ const deployApp = async () => {
     message.error('部署失败，请重试')
   } finally {
     deploying.value = false
+  }
+}
+
+// 下载代码（适配后端 ZIP 响应头）
+const downloadCode = async () => {
+  if (!appId.value) {
+    message.error('应用ID不存在')
+    return
+  }
+  downloading.value = true
+  try {
+    const baseURL = request.defaults.baseURL || API_BASE_URL
+    const url = `${baseURL}/app/download/${appId.value}`
+    const response = await fetch(url, {
+      method: 'GET',
+      credentials: 'include',
+    })
+    if (!response.ok) {
+      throw new Error(`下载失败: ${response.status}`)
+    }
+    const contentDisposition = response.headers.get('Content-Disposition')
+    const fileName = contentDisposition?.match(/filename="(.+)"/)?.[1] || `app-${appId.value}.zip`
+    const blob = await response.blob()
+    const downloadUrl = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = downloadUrl
+    link.download = fileName
+    link.click()
+    URL.revokeObjectURL(downloadUrl)
+    message.success('代码下载成功')
+  } catch (error) {
+    console.error('下载失败：', error)
+    message.error('下载失败，请重试')
+  } finally {
+    downloading.value = false
   }
 }
 
@@ -753,7 +811,6 @@ onUnmounted(() => {
   flex: 1;
   padding: 16px;
   overflow-y: auto;
-  scroll-behavior: smooth;
 }
 
 /* 加载更多按钮样式 */
