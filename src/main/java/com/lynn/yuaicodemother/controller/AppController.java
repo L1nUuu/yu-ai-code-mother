@@ -3,6 +3,7 @@ package com.lynn.yuaicodemother.controller;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
+import com.lynn.yuaicodemother.ai.AiCodeGenTypeRoutingService;
 import com.lynn.yuaicodemother.annotation.AuthCheck;
 import com.lynn.yuaicodemother.common.BaseResponse;
 import com.lynn.yuaicodemother.common.DeleteRequest;
@@ -61,6 +62,9 @@ public class AppController {
 
     @Resource
     private ProjectDownloadService projectDownloadService;
+
+    @Resource
+    private AiCodeGenTypeRoutingService aiCodeGenTypeRoutingService;
 
 
     /**
@@ -174,27 +178,8 @@ public class AppController {
         if (initPrompt == null || initPrompt.isEmpty()) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "请填写应用初始化提示");
         }
-
-        App app = new App();
-        BeanUtil.copyProperties(appAddRequest, app);
-
-        // 获取当前登录用户
-        User loginUser = userService.getLoginUser(request);
-        app.setUserId(loginUser.getId());
-        app.setCover("https://picsum.photos/320/180"); //设置封面为随机图片
-
-        // 设置应用名称暂时未initPrompt 前 12位
-        app.setAppName(initPrompt.substring(0, Math.min(initPrompt.length(), 12)));
-        // 暂时设置为VUE工程 TODO
-        app.setCodeGenType(CodeGenTypeEnum.VUE_PROJECT.getValue());
-
-        // 校验应用数据
-        appService.validApp(app, true);
-        //插入数据库
-        boolean result = appService.save(app);
-        ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
-
-        return ResultUtils.success(app.getId());
+        Long appId = appService.createApp(appAddRequest, request,initPrompt);
+        return ResultUtils.success(appId);
     }
 
     /**

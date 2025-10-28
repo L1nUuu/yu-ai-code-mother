@@ -8,6 +8,13 @@
           <UserInfo :user="app?.user" size="small" />
         </div>
         <div class="info-item">
+          <span class="info-label">生成类型：</span>
+          <a-tag :color="codeGenMeta.color" class="gen-type">
+            <component :is="codeGenMeta.icon" class="gen-type__icon" />
+            <span class="gen-type__text">{{ codeGenMeta.label }}</span>
+          </a-tag>
+        </div>
+        <div class="info-item">
           <span class="info-label">创建时间：</span>
           <span>{{ formatTime(app?.createTime) }}</span>
         </div>
@@ -43,9 +50,11 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { EditOutlined, DeleteOutlined } from '@ant-design/icons-vue'
+import type { Component } from 'vue'
+import { EditOutlined, DeleteOutlined, CodeOutlined, FolderOpenOutlined, ProjectOutlined } from '@ant-design/icons-vue'
 import UserInfo from './UserInfo.vue'
 import { formatTime } from '@/utils/time'
+import { formatCodeGenType, CodeGenTypeEnum } from '@/utils/codeGenTypes'
 
 interface Props {
   open: boolean
@@ -68,6 +77,34 @@ const emit = defineEmits<Emits>()
 const visible = computed({
   get: () => props.open,
   set: (value) => emit('update:open', value),
+})
+
+// 生成类型展示元信息（颜色 + 图标 + 文案）
+const codeGenMeta = computed<{ label: string; color: string; icon: Component }>(() => {
+  const type = props.app?.codeGenType as CodeGenTypeEnum | undefined
+  const label = formatCodeGenType(type)
+  let color: string = 'default'
+  let icon: Component = CodeOutlined as Component
+
+  switch (type) {
+    case CodeGenTypeEnum.HTML:
+      color = 'cyan'
+      icon = CodeOutlined as Component
+      break
+    case CodeGenTypeEnum.MULTI_FILE:
+      color = 'purple'
+      icon = FolderOpenOutlined as Component
+      break
+    case CodeGenTypeEnum.VUE_PROJECT:
+      color = 'geekblue'
+      icon = ProjectOutlined as Component
+      break
+    default:
+      color = 'default'
+      icon = CodeOutlined as Component
+  }
+
+  return { label, color, icon }
 })
 
 const handleEdit = () => {
@@ -99,6 +136,22 @@ const handleDelete = () => {
   color: #666;
   font-size: 14px;
   flex-shrink: 0;
+}
+
+.gen-type {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.gen-type__icon {
+  font-size: 14px;
+}
+
+.gen-type__text {
+  line-height: 1;
 }
 
 .app-actions {

@@ -1,5 +1,6 @@
 package com.lynn.yuaicodemother.service;
 
+import com.lynn.yuaicodemother.model.dto.app.AppAddRequest;
 import com.lynn.yuaicodemother.model.dto.app.AppQueryRequest;
 import com.lynn.yuaicodemother.model.entity.App;
 import com.lynn.yuaicodemother.model.entity.User;
@@ -7,6 +8,7 @@ import com.lynn.yuaicodemother.model.vo.AppVO;
 import com.mybatisflex.core.paginate.Page;
 import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.core.service.IService;
+import jakarta.servlet.http.HttpServletRequest;
 import reactor.core.publisher.Flux;
 
 import java.util.List;
@@ -90,4 +92,13 @@ public interface AppService extends IService<App> {
      * @return 应用分页结果
      */
     Page<App> pageFeaturedApp(AppQueryRequest appQueryRequest);
+
+    /**
+     * 创建应用
+     * @param appAddRequest 应用添加请求参数
+     * @param request 请求
+     * @param initPrompt 初始化提示
+     * @return 应用ID
+     */
+    Long createApp(AppAddRequest appAddRequest, HttpServletRequest request,String initPrompt);
 }

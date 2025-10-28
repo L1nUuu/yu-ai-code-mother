@@ -5,6 +5,7 @@ import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
+import com.lynn.yuaicodemother.ai.AiCodeGenTypeRoutingService;
 import com.lynn.yuaicodemother.constant.AppConstant;
 import com.lynn.yuaicodemother.core.AiCodeGeneratorFacade;
 import com.lynn.yuaicodemother.core.builder.VueProjectBuilder;
@@ -12,6 +13,7 @@ import com.lynn.yuaicodemother.core.handler.StreamHandlerExecutor;
 import com.lynn.yuaicodemother.exception.BusinessException;
 import com.lynn.yuaicodemother.exception.ErrorCode;
 import com.lynn.yuaicodemother.exception.ThrowUtils;
+import com.lynn.yuaicodemother.model.dto.app.AppAddRequest;
 import com.lynn.yuaicodemother.model.dto.app.AppQueryRequest;
 import com.lynn.yuaicodemother.model.entity.App;
 import com.lynn.yuaicodemother.model.entity.User;
@@ -28,6 +30,7 @@ import com.mybatisflex.core.paginate.Page;
 import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.spring.service.impl.ServiceImpl;
 import jakarta.annotation.Resource;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
@@ -61,6 +64,8 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
     private VueProjectBuilder vueProjectBuilder;
     @Resource
     private ScreenshotService screenshotService;
+    @Resource
+    private AiCodeGenTypeRoutingService aiCodeGenTypeRoutingService;
 
     @Override
     public Flux<String> chatToGenCode(Long appId, String message, User loginUser) {
@@ -308,6 +313,34 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         queryWrapper.orderBy("priority", false);
 
         return this.page(new Page<>(pageNum, pageSize), queryWrapper);
+    }
+
+    @Override
+    public Long createApp(AppAddRequest appAddRequest, HttpServletRequest request, String initPrompt) {
+        App app = new App();
+        BeanUtil.copyProperties(appAddRequest, app);
+
+        // 获取当前登录用户
+        User loginUser = userService.getLoginUser(request);
+        app.setUserId(loginUser.getId());
+        app.setCover("https://picsum.photos/320/180"); //设置封面为随机图片
+
+        // 设置应用名称暂时未initPrompt 前 12位
+        app.setAppName(initPrompt.substring(0, Math.min(initPrompt.length(), 12)));
+        // 暂时设置为VUE工程
+//        app.setCodeGenType(CodeGenTypeEnum.VUE_PROJECT.getValue());
+
+        // 路由代码生成类型
+        CodeGenTypeEnum codeGenTypeEnum = aiCodeGenTypeRoutingService.routeCodeGenType(initPrompt);
+        app.setCodeGenType(codeGenTypeEnum.getValue());
+
+        // 校验应用数据
+        this.validApp(app, true);
+        //插入数据库
+        boolean result = this.save(app);
+        ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
+
+        return app.getId();
     }
 
 
