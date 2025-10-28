@@ -14,7 +14,7 @@
           :rows="4"
           placeholder="请描述你想生成的网站，越详细效果越好哦"
         />
-        <a-button class="submit-arrow" type="primary" shape="circle" @click="createApp">
+        <a-button class="submit-arrow" type="primary" shape="circle" @click="createApp" :loading="creating" :disabled="creating">
           <UpOutlined />
         </a-button>
         <!-- 删除内部的 prompt-actions/suggest-tags -->
@@ -111,6 +111,7 @@ const shortTags = [
 
 // 创建应用
 const createApp = async () => {
+  if (creating.value) return
   if (!prompt.value.trim()) {
     message.warning('请先输入提示词')
     return

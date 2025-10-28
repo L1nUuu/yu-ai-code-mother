@@ -313,7 +313,7 @@ const viewChatDetail = (record: API.ChatHistory) => {
 }
 
 // 删除对话记录
-const deleteChatHistory = async (id: number) => {
+const deleteChatHistory = async (id: string) => {
   try {
     // 注意：这里需要根据实际的删除API来实现
     // const res = await deleteChatHistoryApi({ id })

@@ -190,7 +190,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, nextTick, onUnmounted, computed } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router'
 import { message } from 'ant-design-vue'
 import { useLoginUserStore } from '@/stores/loginUser'
 import {
@@ -259,6 +259,19 @@ const deployUrl = ref('')
 // 下载相关
 const downloading = ref(false)
 
+onBeforeRouteLeave((to, from, next) => {
+  if (isGenerating.value) {
+    const leave = window.confirm('代码正在生成，确定要离开该页面吗？')
+    if (leave) {
+      next()
+    } else {
+      next(false)
+    }
+  } else {
+    next()
+  }
+})
+
 // 权限相关
 const isOwner = computed(() => {
   return appInfo.value?.userId === loginUserStore.loginUser.id
@@ -284,7 +297,7 @@ const exportConversation = async () => {
   }
   try {
     exporting.value = true
-    const res = await exportAppChatHistoryMarkdown({ appId: appId.value as unknown as number })
+    const res = await exportAppChatHistoryMarkdown({ appId: appId.value! })
     const markdown = res.data
     if (!markdown || typeof markdown !== 'string' || markdown.trim().length === 0) {
       message.warning('暂无对话可导出')
@@ -325,7 +338,7 @@ const loadChatHistory = async (isLoadMore = false) => {
 
   try {
     const params: API.listAppChatHistoryByPageParams = {
-      appId: appId.value as unknown as number,
+      appId: appId.value!,
       pageSize: 10,
     }
 
@@ -442,7 +455,7 @@ const fetchAppInfo = async () => {
   }
 
   try {
-    const res = await getAppVoById({ id: id as unknown as number })
+    const res = await getAppVoById({ id })
     if (res.data.code === 0 && res.data.data) {
       appInfo.value = res.data.data
 
@@ -644,7 +657,7 @@ const deployApp = async () => {
   deploying.value = true
   try {
     const res = await deployAppApi({
-      appId: appId.value as unknown as number,
+      appId: appId.value!,
     })
 
     if (res.data.code === 0 && res.data.data) {

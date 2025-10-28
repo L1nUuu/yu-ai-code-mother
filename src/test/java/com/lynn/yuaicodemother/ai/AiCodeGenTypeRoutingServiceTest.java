@@ -28,6 +28,6 @@ class AiCodeGenTypeRoutingServiceTest {
         String codeGenTypeValue2 = aiCodeGenTypeRoutingService.routeCodeGenType("做一个电商系统").getValue();
         log.info("codeGenTypeValue2: {}", codeGenTypeValue2);
         String codeGenTypeValue3 = aiCodeGenTypeRoutingService.routeCodeGenType("做一个公司官网，需要首页，关于我们，联系我们三个页面").getValue();
-            log.info("codeGenTypeValue3: {}", codeGenTypeValue3);
+        log.info("codeGenTypeValue3: {}", codeGenTypeValue3);
     }
 }
