@@ -102,6 +102,42 @@
         <!-- 用户消息输入框 -->
         <div class="input-container">
           <div class="input-wrapper">
+            <a-alert
+              v-if="selectedElementInfo"
+              type="info"
+              closable
+              @close="clearSelectedElement"
+              style="margin-bottom: 8px"
+            >
+              <template #message>
+                <div class="selected-element-info">
+                  <div class="element-header">
+                    <span class="element-tag">
+                      选中元素：{{ selectedElementInfo.tagName.toLowerCase() }}
+                    </span>
+                    <span v-if="selectedElementInfo.id" class="element-id">
+                      #{{ selectedElementInfo.id }}
+                    </span>
+                    <span v-if="selectedElementInfo.className" class="element-class">
+                      .{{ selectedElementInfo.className.split(' ').join('.') }}
+                    </span>
+                  </div>
+                  <div class="element-details">
+                    <div v-if="selectedElementInfo.textContent" class="element-item">
+                      内容: {{ selectedElementInfo.textContent.substring(0, 50) }}
+                      {{ selectedElementInfo.textContent.length > 50 ? '...' : '' }}
+                    </div>
+                    <div v-if="selectedElementInfo.pagePath" class="element-item">
+                      页面路径: {{ selectedElementInfo.pagePath }}
+                    </div>
+                    <div class="element-item">
+                      选择器:
+                      <code class="element-selector-code">{{ selectedElementInfo.selector }}</code>
+                    </div>
+                  </div>
+                </div>
+              </template>
+            </a-alert>
             <a-tooltip v-if="!isOwner" title="无法在别人的作品下对话哦~" placement="top">
               <a-textarea
                 v-model:value="userInput"
@@ -122,6 +158,17 @@
               :disabled="isGenerating"
             />
             <div class="input-actions">
+              <a-button
+                :type="editMode ? 'default' : 'dashed'"
+                @click="toggleEditMode"
+                :disabled="isGenerating || !isOwner || !previewUrl"
+                style="margin-right: 8px"
+              >
+                <template #icon>
+                  <EditOutlined />
+                </template>
+                {{ editMode ? '退出编辑' : '编辑模式' }}
+              </a-button>
               <a-button
                 type="primary"
                 @click="sendMessage"
@@ -164,6 +211,7 @@
             :src="previewUrl"
             class="preview-iframe"
             frameborder="0"
+            ref="previewIframe"
             @load="onIframeLoad"
           ></iframe>
         </div>
@@ -216,7 +264,11 @@ import {
   InfoCircleOutlined,
   UpOutlined,
   DownloadOutlined,
+  EditOutlined,
 } from '@ant-design/icons-vue'
+
+import { createIframeVisualEditor } from '@/utils/visualEditor'
+import type { ElementInfo, IframeVisualEditor } from '@/utils/visualEditor'
 
 const route = useRoute()
 const router = useRouter()
@@ -250,6 +302,10 @@ const historyLoaded = ref(false)
 // 预览相关
 const previewUrl = ref('')
 const previewReady = ref(false)
+const previewIframe = ref<HTMLIFrameElement>()
+const editMode = ref(false)
+const selectedElementInfo = ref<ElementInfo | null>(null)
+let editor: IframeVisualEditor | null = null
 
 // 部署相关
 const deploying = ref(false)
@@ -512,7 +568,19 @@ const sendMessage = async () => {
     return
   }
 
-  const messageText = userInput.value.trim()
+  let messageText = userInput.value.trim()
+  if (selectedElementInfo.value) {
+    const info = selectedElementInfo.value
+    let elementContext = `\n\n选中元素信息：`
+    if (info.pagePath) {
+      elementContext += `\n- 页面路径: ${info.pagePath}`
+    }
+    elementContext += `\n- 标签: ${info.tagName.toLowerCase()}\n- 选择器: ${info.selector}`
+    if (info.textContent) {
+      elementContext += `\n- 当前内容: ${info.textContent.substring(0, 100)}`
+    }
+    messageText += elementContext
+  }
   userInput.value = ''
 
   // 添加用户消息
@@ -534,6 +602,15 @@ const sendMessage = async () => {
 
   // 开始生成
   isGenerating.value = true
+
+  // 发送消息后，清除选中元素并退出编辑模式
+  if (editMode.value) {
+    editor?.clearSelection()
+    editor?.disable()
+    editMode.value = false
+    selectedElementInfo.value = null
+  }
+
   await generateCode(messageText, aiMessageIndex)
 }
 
@@ -763,7 +840,43 @@ onMounted(() => {
 // 清理资源
 onUnmounted(() => {
   // EventSource 会在组件卸载时自动清理
+  editor?.disable()
 })
+
+// 切换编辑模式
+const toggleEditMode = () => {
+  if (!previewUrl.value) {
+    message.warning('请先生成并加载网站预览')
+    return
+  }
+  if (!previewIframe.value) {
+    message.warning('预览未准备好')
+    return
+  }
+  if (!editor) {
+    editor = createIframeVisualEditor(previewIframe.value, {
+      onSelect: (info) => {
+        selectedElementInfo.value = info
+      },
+    })
+  }
+  if (!editMode.value) {
+    editor.enable()
+    editMode.value = true
+    message.success('已进入编辑模式')
+  } else {
+    editor.disable()
+    editMode.value = false
+    selectedElementInfo.value = null
+    message.info('已退出编辑模式')
+  }
+}
+
+// 主动移除选中元素
+const clearSelectedElement = () => {
+  editor?.clearSelection()
+  selectedElementInfo.value = null
+}
 </script>
 
 <style scoped>
