@@ -5,6 +5,7 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
+
 /**
  * 工具调用消息
  */
@@ -19,6 +20,8 @@ public class ToolRequestMessage extends StreamMessage {
 
     private String arguments;
 
+    private String text;
+
     public ToolRequestMessage(ToolExecutionRequest toolExecutionRequest) {
         super(StreamMessageTypeEnum.TOOL_REQUEST.getValue());
         this.id = toolExecutionRequest.id();
@@ -26,3 +29,4 @@ public class ToolRequestMessage extends StreamMessage {
         this.arguments = toolExecutionRequest.arguments();
     }
 }
+

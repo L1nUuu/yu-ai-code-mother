@@ -22,11 +22,8 @@ import com.lynn.yuaicodemother.model.enums.ChatHistoryMessageTypeEnum;
 import com.lynn.yuaicodemother.model.enums.CodeGenTypeEnum;
 import com.lynn.yuaicodemother.model.vo.AppVO;
 import com.lynn.yuaicodemother.model.vo.UserVO;
-import com.lynn.yuaicodemother.service.AppService;
+import com.lynn.yuaicodemother.service.*;
 import com.lynn.yuaicodemother.mapper.AppMapper;
-import com.lynn.yuaicodemother.service.ChatHistoryService;
-import com.lynn.yuaicodemother.service.ScreenshotService;
-import com.lynn.yuaicodemother.service.UserService;
 import com.mybatisflex.core.paginate.Page;
 import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.spring.service.impl.ServiceImpl;
@@ -69,6 +66,8 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
     private AiCodeGenTypeRoutingService aiCodeGenTypeRoutingService;
     @Resource
     private AiCodeGenAppNameService aiCodeGenAppNameService;
+    @Resource
+    private ChatHistoryOriginalService chatHistoryOriginalService;
 
     @Override
     public Flux<String> chatToGenCode(Long appId, String message, User loginUser) {
@@ -91,10 +90,11 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         }
         // 6.在调用AI生成代码之前，先保存用户消息到数据库
         chatHistoryService.addChatMessage(appId, message, ChatHistoryMessageTypeEnum.USER.getValue(), loginUser.getId());
+        chatHistoryOriginalService.addOriginalChatMessage(appId,message,ChatHistoryMessageTypeEnum.USER.getValue(),loginUser.getId());
         // 7.调用AI生成代码（流式）
         Flux<String> contentFlux = aiCodeGeneratorFacade.generatorAndSaveCodeStream(message, codeGenTypeEnum, appId);
         // 8.收集AI响应的内容，并且在完成后保存记录到对话历史
-        return streamHandlerExecutor.doExecute(contentFlux, chatHistoryService, appId, loginUser, codeGenTypeEnum);
+        return streamHandlerExecutor.doExecute(contentFlux, chatHistoryService,chatHistoryOriginalService, appId, loginUser, codeGenTypeEnum);
     }
 
     @Override
@@ -367,8 +367,10 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         if (appId <= 0) {
             return false;
         }
+        //先删除关联的对话历史
         try {
             chatHistoryService.deleteByAppId(appId);
+            chatHistoryOriginalService.deleteByAppId(appId);
         } catch (Exception e) {
             log.error("删除应用关联的对话历史失败：{}", e.getMessage());
         }
