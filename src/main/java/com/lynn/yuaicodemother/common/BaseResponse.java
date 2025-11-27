@@ -2,6 +2,7 @@ package com.lynn.yuaicodemother.common;
 
 import com.lynn.yuaicodemother.exception.ErrorCode;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
 
@@ -14,6 +15,7 @@ import java.io.Serializable;
  * @Version 1.00
  */
 @Data
+@NoArgsConstructor
 public class BaseResponse<T> implements Serializable {
 
     private int code;
