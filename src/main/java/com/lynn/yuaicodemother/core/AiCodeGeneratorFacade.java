@@ -17,6 +17,8 @@ import com.lynn.yuaicodemother.ai.model.MultiFileCodeResult;
 import com.lynn.yuaicodemother.ai.model.message.AiResponseMessage;
 import com.lynn.yuaicodemother.ai.model.message.ToolExecutedMessage;
 import com.lynn.yuaicodemother.ai.model.message.ToolRequestMessage;
+import com.lynn.yuaicodemother.constant.AppConstant;
+import com.lynn.yuaicodemother.core.builder.VueProjectBuilder;
 import com.lynn.yuaicodemother.core.parser.CodeParserExecutor;
 import com.lynn.yuaicodemother.core.saver.CodeFileSaverExecutor;
 import com.lynn.yuaicodemother.core.saver.CodeFileSaverTemplate;
@@ -43,7 +45,8 @@ import java.util.concurrent.CompletableFuture;
 public class AiCodeGeneratorFacade {
     @Resource
     private AiCodeGeneratorServiceFactory aiCodeGeneratorServiceFactory;
-
+    @Resource
+    private VueProjectBuilder vueProjectBuilder;
     /**
      * 统一入口：根据类型生成并保存代码
      *
@@ -98,7 +101,7 @@ public class AiCodeGeneratorFacade {
                 yield processCodeStream(multiFileCodeStream, CodeGenTypeEnum.MULTI_FILE, appId);//处理结果流（解析保存）
             case VUE_PROJECT:
                 TokenStream tokenStream = aiCodeGeneratorService.generateVueProjectFileCode(appId, userMessage);//生成结果流
-                yield processTokenStream(tokenStream);
+                yield processTokenStream(tokenStream,appId);
             default:
                 String errorMessage = "不支持的生成类型" + codeGenTypeEnum.getValue();
                 throw new BusinessException(ErrorCode.SYSTEM_ERROR, errorMessage);
@@ -113,7 +116,7 @@ public class AiCodeGeneratorFacade {
      * @param tokenStream 原始的流式数据源，会发射多种类型的事件（部分响应、工具调用等）
      * @return Flux<String> 包含各类消息的响应式流，每个元素为 JSON 格式字符串
      */
-    private Flux<String> processTokenStream(TokenStream tokenStream) {
+    private Flux<String> processTokenStream(TokenStream tokenStream, Long appId) {
 
         // 使用 Flux.create 创建响应式流，通过 sink 控制流的元素发射、完成和错误
         return Flux.create(sink -> {
@@ -158,6 +161,9 @@ public class AiCodeGeneratorFacade {
                     // 4. 监听"处理完成"事件：当 TokenStream 所有数据处理完毕时触发
                     .onCompleteResponse((ChatResponse response) -> {
                         log.info("TokenStream 所有事件处理完成");
+                        // 执行Vue项目构建（同步执行，确保预览时项目已就绪）
+                        String projectPath = AppConstant.CODE_OUTPUT_ROOT_DIR + "/vue_project_" + appId;
+                        vueProjectBuilder.buildProject(projectPath);
                         sink.complete(); // 标记 Flux 流正常结束
                     })
 
