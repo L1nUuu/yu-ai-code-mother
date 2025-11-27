@@ -1,6 +1,7 @@
 package com.lynn.yuaicodemother.langgraph4j.node;
 
 import com.lynn.yuaicodemother.ai.AiCodeGenTypeRoutingService;
+import com.lynn.yuaicodemother.ai.AiCodeGenTypeRoutingServiceFactory;
 import com.lynn.yuaicodemother.langgraph4j.state.WorkflowContext;
 import com.lynn.yuaicodemother.model.enums.CodeGenTypeEnum;
 import com.lynn.yuaicodemother.util.SpringContextUtil;
@@ -21,7 +22,8 @@ public class RouterNode {
 
             CodeGenTypeEnum generationType;
             try {
-                AiCodeGenTypeRoutingService aiCodeGenTypeRoutingService = SpringContextUtil.getBean(AiCodeGenTypeRoutingService.class);
+                AiCodeGenTypeRoutingServiceFactory aiCodeGenTypeRoutingServiceFactory = SpringContextUtil.getBean(AiCodeGenTypeRoutingServiceFactory.class);
+                AiCodeGenTypeRoutingService aiCodeGenTypeRoutingService = aiCodeGenTypeRoutingServiceFactory.createAiCodeGenTypeRoutingService();
                 // 根据原始提示词进行智能路由
                 generationType = aiCodeGenTypeRoutingService.routeCodeGenType(context.getOriginalPrompt());
                 log.info("AI智能路由成功，选择类型：{} ({})",generationType.getValue(), generationType.getText());

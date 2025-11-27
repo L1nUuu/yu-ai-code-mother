@@ -21,7 +21,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @SpringBootTest
 class MermaidDiagramToolTest {
 
-    @Resource
+
     private MermaidDiagramTool mermaidDiagramTool;
 
     @Test

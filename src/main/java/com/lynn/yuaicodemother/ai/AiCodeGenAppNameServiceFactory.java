@@ -18,17 +18,24 @@ import org.springframework.context.annotation.Configuration;
 @Slf4j
 @Configuration
 public class AiCodeGenAppNameServiceFactory {
-    @Resource
+
+    @Resource(name = "namingChatModelPrototype")
     private ChatModel chatModel;
 
 
     /**
      * 创建AI代码生成应用名称服务实例
      */
-    @Bean
-    public AiCodeGenAppNameService aiCodeGenAppNameService() {
+    public AiCodeGenAppNameService createAiCodeGenAppNameService() {
         return AiServices.builder(AiCodeGenAppNameService.class)
                 .chatModel(chatModel)
                 .build();
     }
+
+    @Bean
+    public AiCodeGenAppNameService aiCodeGenAppNameService() {
+        return createAiCodeGenAppNameService();
+    }
+
+
 }

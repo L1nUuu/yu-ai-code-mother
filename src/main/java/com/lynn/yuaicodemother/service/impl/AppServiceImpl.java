@@ -6,7 +6,9 @@ import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
 import com.lynn.yuaicodemother.ai.AiCodeGenAppNameService;
+import com.lynn.yuaicodemother.ai.AiCodeGenAppNameServiceFactory;
 import com.lynn.yuaicodemother.ai.AiCodeGenTypeRoutingService;
+import com.lynn.yuaicodemother.ai.AiCodeGenTypeRoutingServiceFactory;
 import com.lynn.yuaicodemother.constant.AppConstant;
 import com.lynn.yuaicodemother.core.AiCodeGeneratorFacade;
 import com.lynn.yuaicodemother.core.builder.VueProjectBuilder;
@@ -63,9 +65,9 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
     @Resource
     private ScreenshotService screenshotService;
     @Resource
-    private AiCodeGenTypeRoutingService aiCodeGenTypeRoutingService;
+    private AiCodeGenTypeRoutingServiceFactory aiCodeGenTypeRoutingServiceFactory;
     @Resource
-    private AiCodeGenAppNameService aiCodeGenAppNameService;
+    private AiCodeGenAppNameServiceFactory aiCodeGenAppNameServiceFactory;
     @Resource
     private ChatHistoryOriginalService chatHistoryOriginalService;
 
@@ -331,14 +333,16 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         // 设置应用名称暂时未initPrompt 前 12位
         //app.setAppName(initPrompt.substring(0, Math.min(initPrompt.length(), 12)));
 
-        // 智能生成应用名称
+        // 智能生成应用名称（多例模式）
+        AiCodeGenAppNameService aiCodeGenAppNameService = aiCodeGenAppNameServiceFactory.createAiCodeGenAppNameService();
         String appName = aiCodeGenAppNameService.getAppName(initPrompt);
         app.setAppName(appName);
 
         // 暂时设置为VUE工程
 //        app.setCodeGenType(CodeGenTypeEnum.VUE_PROJECT.getValue());
 
-        // 智能路由代码生成类型
+        // 智能路由代码生成类型(多例模式)
+        AiCodeGenTypeRoutingService aiCodeGenTypeRoutingService = aiCodeGenTypeRoutingServiceFactory.createAiCodeGenTypeRoutingService();
         CodeGenTypeEnum codeGenTypeEnum = aiCodeGenTypeRoutingService.routeCodeGenType(initPrompt);
         app.setCodeGenType(codeGenTypeEnum.getValue());
 
