@@ -94,7 +94,7 @@ public class ImageCollectorNode {
         });
     }
 
-
+    // 让 ai 自己调用工具直接收集图片
 //    public static AsyncNodeAction<MessagesState<String>> create() {
 //        return node_async(state -> {
 //            WorkflowContext context = WorkflowContext.getContext(state);
