@@ -18,6 +18,8 @@ import com.lynn.yuaicodemother.model.entity.App;
 import com.lynn.yuaicodemother.model.entity.User;
 import com.lynn.yuaicodemother.model.enums.CodeGenTypeEnum;
 import com.lynn.yuaicodemother.model.vo.AppVO;
+import com.lynn.yuaicodemother.ratelimter.annotation.RateLimit;
+import com.lynn.yuaicodemother.ratelimter.enums.RateLimitType;
 import com.lynn.yuaicodemother.service.AppService;
 import com.lynn.yuaicodemother.service.ProjectDownloadService;
 import com.lynn.yuaicodemother.service.ScreenshotService;
@@ -75,6 +77,7 @@ public class AppController {
      * @return 流式代码
      */
     @GetMapping(value = "/chat/gen/code", produces = MediaType.TEXT_EVENT_STREAM_VALUE) //接口响应类型为 SSE
+    @RateLimit(limitType = RateLimitType.USER,rate = 5,rateInterval = 60,message = "AI请求过于频繁，请稍后再试")
     public Flux<ServerSentEvent<String>> chatToGenCode(@RequestParam Long appId, @RequestParam String message,
                                                        HttpServletRequest request) {
         // 1.参数校验
