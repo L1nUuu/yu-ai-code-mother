@@ -17,6 +17,7 @@ import com.lynn.yuaicodemother.ai.tools.*;
 import com.lynn.yuaicodemother.config.ReasoningStreamingChatModelConfig;
 import com.lynn.yuaicodemother.exception.BusinessException;
 import com.lynn.yuaicodemother.exception.ErrorCode;
+import com.lynn.yuaicodemother.guardrail.PromptSafetyInputGuardrail;
 import com.lynn.yuaicodemother.model.enums.CodeGenTypeEnum;
 import com.lynn.yuaicodemother.service.ChatHistoryOriginalService;
 import com.lynn.yuaicodemother.service.ChatHistoryService;
@@ -42,7 +43,7 @@ import java.time.Duration;
 @Configuration
 @Slf4j
 public class AiCodeGeneratorServiceFactory {
-    
+
     @Resource(name = "openAiChatModel")
     private ChatModel chatModel;
     @Resource
@@ -127,6 +128,7 @@ public class AiCodeGeneratorServiceFactory {
                         .chatMemoryProvider(
                                 memoryId -> chatMemory
                         )
+                        .inputGuardrails(new PromptSafetyInputGuardrail()) // 添加输入护轨
                         .tools(
                                 new FileWriteTool(),
                                 new FileReadTool(),
@@ -152,6 +154,7 @@ public class AiCodeGeneratorServiceFactory {
                 aiCodeGeneratorService = AiServices.builder(AiCodeGeneratorService.class)
                         .chatModel(chatModel)
                         .streamingChatModel(openAiStreamingChatModel)
+                        .inputGuardrails(new PromptSafetyInputGuardrail()) // 添加输入护轨
                         .chatMemory(chatMemory)
                         .build();
             }
